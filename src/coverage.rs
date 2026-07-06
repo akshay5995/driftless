@@ -32,7 +32,7 @@ struct Def {
     kind: &'static str,
 }
 
-fn coverage_kind(lang: Lang, kind: &str) -> Option<&'static str> {
+fn coverage_kind(lang: Lang, kind: &str, in_rust_impl: bool) -> Option<&'static str> {
     match (lang, kind) {
         (Lang::Go, "function_declaration") => Some("fn"),
         (Lang::Go, "method_declaration") => Some("method"),
@@ -50,6 +50,7 @@ fn coverage_kind(lang: Lang, kind: &str) -> Option<&'static str> {
         (Lang::Ruby, "singleton_method") => Some("method"),
         (Lang::Ruby, "class") => Some("class"),
         (Lang::Ruby, "module") => Some("module"),
+        (Lang::Rs, "function_item") if in_rust_impl => Some("method"),
         (Lang::Rs, "function_item") => Some("fn"),
         (Lang::Rs, "struct_item") => Some("struct"),
         (Lang::Rs, "enum_item") => Some("enum"),
@@ -125,24 +126,31 @@ fn collect_public_defs(lang: Lang, ts_lang: tree_sitter::Language, src: &str) ->
     let bytes = src.as_bytes();
     let mut out = Vec::new();
 
+    #[derive(Clone, Copy)]
+    struct Scope {
+        exported: bool,
+        pub_chain: bool,
+        rust_impl_depth: usize,
+    }
+
     fn walk(
         node: tree_sitter::Node,
         lang: Lang,
         bytes: &[u8],
         chain: &mut Vec<String>,
-        exported: bool,
-        pub_chain: bool,
+        scope: Scope,
         out: &mut Vec<Def>,
     ) {
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
-            let exported = exported || child.kind() == "export_statement";
+            let exported = scope.exported || child.kind() == "export_statement";
             if let Some(path) = def_path(child, bytes) {
                 let name = path.last().expect("definition path has a name").clone();
                 let this_pub = is_public(lang, child, &name, bytes, exported);
                 let ctor = matches!(name.as_str(), "constructor" | "__init__" | "new");
-                if let Some(kind) = coverage_kind(lang, child.kind()) {
-                    if this_pub && pub_chain && !ctor {
+                let in_rust_impl = lang == Lang::Rs && scope.rust_impl_depth > 0;
+                if let Some(kind) = coverage_kind(lang, child.kind(), in_rust_impl) {
+                    if this_pub && scope.pub_chain && !ctor {
                         out.push(Def {
                             chain: chain
                                 .iter()
@@ -156,19 +164,28 @@ fn collect_public_defs(lang: Lang, ts_lang: tree_sitter::Language, src: &str) ->
                 }
                 let path_len = path.len();
                 chain.extend(path);
+                let is_rust_impl = lang == Lang::Rs && child.kind() == "impl_item";
+                let next_pub_chain = if is_rust_impl {
+                    scope.pub_chain
+                } else {
+                    scope.pub_chain && this_pub
+                };
                 walk(
                     child,
                     lang,
                     bytes,
                     chain,
-                    exported,
-                    pub_chain && this_pub,
+                    Scope {
+                        exported,
+                        pub_chain: next_pub_chain,
+                        rust_impl_depth: scope.rust_impl_depth + usize::from(is_rust_impl),
+                    },
                     out,
                 );
                 let new_len = chain.len().saturating_sub(path_len);
                 chain.truncate(new_len);
             } else {
-                walk(child, lang, bytes, chain, exported, pub_chain, out);
+                walk(child, lang, bytes, chain, Scope { exported, ..scope }, out);
             }
         }
     }
@@ -178,8 +195,11 @@ fn collect_public_defs(lang: Lang, ts_lang: tree_sitter::Language, src: &str) ->
         lang,
         bytes,
         &mut chain,
-        false,
-        true,
+        Scope {
+            exported: false,
+            pub_chain: true,
+            rust_impl_depth: 0,
+        },
         &mut out,
     );
     out

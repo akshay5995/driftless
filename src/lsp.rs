@@ -13,6 +13,7 @@ struct Backend {
     root: std::sync::Mutex<Option<PathBuf>>,
     client_can_watch_files: std::sync::Mutex<bool>,
     open_docs: std::sync::Mutex<HashMap<Url, String>>,
+    open_sources: std::sync::Mutex<HashMap<Url, String>>,
 }
 
 fn uri_extension(uri: &Url) -> Option<String> {
@@ -87,6 +88,22 @@ fn to_position(text: &str, offset: usize) -> Position {
 }
 
 impl Backend {
+    fn rel_file_key(&self, uri: &Url) -> Option<String> {
+        let root = self.root.lock().unwrap().clone()?;
+        let path = uri.to_file_path().ok()?;
+        let rel = path.strip_prefix(root).ok()?;
+        Some(rel.display().to_string())
+    }
+
+    fn source_overrides(&self) -> HashMap<String, String> {
+        self.open_sources
+            .lock()
+            .unwrap()
+            .iter()
+            .filter_map(|(uri, text)| self.rel_file_key(uri).map(|key| (key, text.clone())))
+            .collect()
+    }
+
     async fn check_doc(&self, uri: Url, text: String) {
         let root = self.root.lock().unwrap().clone();
         let Some(root) = root else { return };
@@ -116,7 +133,7 @@ impl Backend {
             .and_then(|p| p.parent().map(|x| x.to_path_buf()))
             .unwrap_or_default();
         let mut diags = Vec::new();
-        let mut context = CheckContext::default();
+        let mut context = CheckContext::with_source_overrides(self.source_overrides());
         for r in extract_refs(&text, &doc_dir) {
             let (msg, severity) = match context.check_ref(&root, &r, Some(&lock)) {
                 RefStatus::Ok => continue,
@@ -224,6 +241,12 @@ impl LanguageServer for Backend {
                 .insert(p.text_document.uri.clone(), p.text_document.text.clone());
             self.check_doc(p.text_document.uri, p.text_document.text)
                 .await;
+        } else if is_source_uri(&p.text_document.uri) {
+            self.open_sources
+                .lock()
+                .unwrap()
+                .insert(p.text_document.uri, p.text_document.text);
+            self.check_open_docs().await;
         }
     }
 
@@ -237,15 +260,29 @@ impl LanguageServer for Backend {
                 self.check_doc(p.text_document.uri, change.text).await;
             }
         } else if is_source_uri(&p.text_document.uri) {
-            self.check_open_docs().await;
+            if let Some(change) = p.content_changes.into_iter().last() {
+                self.open_sources
+                    .lock()
+                    .unwrap()
+                    .insert(p.text_document.uri, change.text);
+                self.check_open_docs().await;
+            }
         }
     }
 
     async fn did_close(&self, p: DidCloseTextDocumentParams) {
-        self.open_docs.lock().unwrap().remove(&p.text_document.uri);
-        self.client
-            .publish_diagnostics(p.text_document.uri, Vec::new(), None)
-            .await;
+        if is_markdown_uri(&p.text_document.uri) {
+            self.open_docs.lock().unwrap().remove(&p.text_document.uri);
+            self.client
+                .publish_diagnostics(p.text_document.uri, Vec::new(), None)
+                .await;
+        } else if is_source_uri(&p.text_document.uri) {
+            self.open_sources
+                .lock()
+                .unwrap()
+                .remove(&p.text_document.uri);
+            self.check_open_docs().await;
+        }
     }
 
     async fn did_save(&self, p: DidSaveTextDocumentParams) {
@@ -260,6 +297,14 @@ impl LanguageServer for Backend {
                 }
             }
         } else if is_source_uri(&p.text_document.uri) {
+            if let Ok(path) = p.text_document.uri.to_file_path() {
+                if let Ok(text) = std::fs::read_to_string(&path) {
+                    self.open_sources
+                        .lock()
+                        .unwrap()
+                        .insert(p.text_document.uri.clone(), text);
+                }
+            }
             self.check_open_docs().await;
         }
     }
@@ -282,6 +327,7 @@ pub(crate) async fn run() {
         root: std::sync::Mutex::new(None),
         client_can_watch_files: std::sync::Mutex::new(false),
         open_docs: std::sync::Mutex::new(HashMap::new()),
+        open_sources: std::sync::Mutex::new(HashMap::new()),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }

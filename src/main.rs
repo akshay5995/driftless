@@ -9,7 +9,6 @@ mod refs;
 mod resolve;
 
 use clap::{Parser as ClapParser, Subcommand};
-use init::CiProvider;
 use std::path::PathBuf;
 
 pub(crate) const TOOL_NAME: &str = "driftless";
@@ -24,9 +23,7 @@ pub(crate) const SOURCE_EXTENSIONS: [&str; 11] = [
     version,
     about = "Keep markdown docs linked to code so drift is caught while you work",
     after_help = "Quick start:
-  driftless init --prompt    Print an agent setup prompt
-  driftless init --print     Print AGENTS.md and CI snippets
-  driftless init --ci gitlab Write AGENTS.md and .gitlab-ci.yml
+  driftless init             Print an agent setup prompt
   driftless update           Review docs, then lock current refs
   driftless check --json     Get machine-readable drift records
 
@@ -65,21 +62,8 @@ enum Cmd {
     },
     /// Write/refresh .driftless.lock with current hashes
     Update,
-    /// Scaffold AGENTS.md and CI setup for a project
-    Init {
-        /// Print the agent guide and CI snippets instead of writing files
-        #[arg(long)]
-        print: bool,
-        /// Print a copyable prompt for an agent to set up Driftless
-        #[arg(long)]
-        prompt: bool,
-        /// Overwrite generated files if they already exist
-        #[arg(long)]
-        force: bool,
-        /// CI scaffold to print or write
-        #[arg(long, value_enum, default_value_t = CiProvider::Github)]
-        ci: CiProvider,
-    },
+    /// Print a copyable agent setup prompt
+    Init,
     /// Run as LSP server over stdio
     Lsp,
 }
@@ -98,12 +82,7 @@ fn main() {
             std::process::exit(coverage::run_coverage(&root, &include, json))
         }
         Cmd::Update => std::process::exit(check::run_check(&root, true, false, false)),
-        Cmd::Init {
-            print,
-            prompt,
-            force,
-            ci,
-        } => std::process::exit(init::run_init(&root, print, prompt, force, ci)),
+        Cmd::Init => std::process::exit(init::run_init()),
         Cmd::Lsp => {
             tokio::runtime::Builder::new_multi_thread()
                 .enable_all()

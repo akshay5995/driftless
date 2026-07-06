@@ -31,14 +31,28 @@ enum SourceCacheEntry {
 #[derive(Default)]
 pub(crate) struct CheckContext {
     files: HashMap<String, SourceCacheEntry>,
+    source_overrides: HashMap<String, String>,
 }
 
 impl CheckContext {
+    pub(crate) fn with_source_overrides(source_overrides: HashMap<String, String>) -> Self {
+        Self {
+            files: HashMap::new(),
+            source_overrides,
+        }
+    }
+
     fn source_file(&mut self, root: &Path, r: &MdRef) -> Result<&SourceFile, RefStatus> {
         let target = root.join(&r.file);
+        let override_src = self.source_overrides.get(&r.file).cloned();
         let entry = self.files.entry(r.file.clone()).or_insert_with(|| {
-            let Ok(src) = std::fs::read_to_string(&target) else {
-                return SourceCacheEntry::FileMissing;
+            let src = if let Some(src) = override_src {
+                src
+            } else {
+                let Ok(src) = std::fs::read_to_string(&target) else {
+                    return SourceCacheEntry::FileMissing;
+                };
+                src
             };
             let Some(lang) = language_for(&target) else {
                 return SourceCacheEntry::FileMissing;
@@ -307,5 +321,25 @@ mod tests {
 
         assert_eq!(heading, None);
         assert_eq!(section, "Intro `src/lib.rs#thing`.");
+    }
+
+    #[test]
+    fn check_context_can_resolve_unsaved_source_overrides() {
+        let dir = tempfile::tempdir().expect("create temp root");
+        let mut overrides = HashMap::new();
+        overrides.insert(
+            "src/lib.rs".to_string(),
+            "pub fn login() -> bool {\n    true\n}\n".to_string(),
+        );
+        let mut context = CheckContext::with_source_overrides(overrides);
+        let reference = MdRef {
+            file: "src/lib.rs".to_string(),
+            symbol: "login".to_string(),
+            span: 0..0,
+        };
+
+        let status = context.check_ref(dir.path(), &reference, None);
+
+        assert!(matches!(status, RefStatus::Unlocked { .. }));
     }
 }

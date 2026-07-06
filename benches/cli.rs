@@ -2,7 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use tempfile::TempDir;
 
 fn driftless_bin() -> PathBuf {
@@ -15,7 +15,31 @@ fn driftless_bin() -> PathBuf {
         .parent()
         .and_then(Path::parent)
         .expect("bench executable under target/release/deps");
-    release_dir.join(format!("driftless{}", std::env::consts::EXE_SUFFIX))
+    let bin = release_dir.join(format!("driftless{}", std::env::consts::EXE_SUFFIX));
+    ensure_release_binary(&bin, &exe);
+    bin
+}
+
+fn ensure_release_binary(bin: &Path, bench_exe: &Path) {
+    let bench_mtime = modified(bench_exe);
+    let bin_mtime = modified(bin);
+    if bin.exists() && bin_mtime >= bench_mtime {
+        return;
+    }
+
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let status = Command::new("cargo")
+        .current_dir(manifest_dir)
+        .args(["build", "--release", "--bin", "driftless"])
+        .status()
+        .expect("build driftless release binary for benchmark");
+    assert!(status.success(), "failed to build driftless release binary");
+}
+
+fn modified(path: &Path) -> SystemTime {
+    fs::metadata(path)
+        .and_then(|m| m.modified())
+        .unwrap_or(SystemTime::UNIX_EPOCH)
 }
 
 fn write(root: &Path, path: &str, contents: &str) {

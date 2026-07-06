@@ -6,14 +6,16 @@ on:
       - "v*"
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  contents: read
 
 jobs:
   build:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -58,7 +60,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify crates.io package
+      - name: Verify Cargo package
         run: cargo package --locked
 
       - name: Build release binary
@@ -85,6 +87,7 @@ jobs:
           mkdir -p "dist/${package}"
           cp "target/${{ matrix.target }}/release/driftless" "dist/${package}/"
           cp README.md "dist/${package}/"
+          cp install.sh "dist/${package}/"
           tar -C dist -czf "dist/${package}.tar.gz" "${package}"
 
       - name: Package Windows binary
@@ -96,6 +99,7 @@ jobs:
           New-Item -ItemType Directory -Path "dist\$package" | Out-Null
           Copy-Item "target\${{ matrix.target }}\release\driftless.exe" "dist\$package\"
           Copy-Item "README.md" "dist\$package\"
+          Copy-Item "install.sh" "dist\$package\"
           Compress-Archive -Path "dist\$package\*" -DestinationPath "dist\$package.zip"
 
       - name: Upload packaged binary
@@ -116,6 +120,10 @@ jobs:
     name: Publish GitHub release
     runs-on: ubuntu-24.04
     needs: build
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Download packaged binaries
@@ -144,6 +152,7 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           gh release create "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
             --verify-tag \
             --fail-on-no-commits \
             --title "Driftless ${version}" \

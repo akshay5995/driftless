@@ -1,170 +1,205 @@
 # driftless
 
-Driftless keeps Markdown docs linked to code so drift is caught while you work.
+Driftless keeps Markdown docs tied to the code they describe. It catches stale docs during local, editor, and agent workflows so CI is the backstop, not the first warning.
 
-Package name: `driftless`. Binary name: `driftless`.
+## Why it exists
 
-It is built for developer and agent loops:
+Docs drift when code changes faster than prose. Driftless makes important Markdown statements point at real source symbols, records the reviewed symbol hashes in `.driftless.lock`, and tells you exactly which doc section needs another look when the code changes.
 
-- write docs that point at real symbols
-- run a fast local check
-- get exact stale sections as JSON when an agent needs to repair docs
-- let CI be the backstop, not the first time drift is noticed
+For agents, `driftless check --json` returns repair-ready records with the stale doc section and current source. For people, plain `driftless check` gives fast terminal feedback.
 
-## Ref syntax
+## Install
 
-```markdown
-Login handled by `src/auth.py#AuthService.login`.
+Install the latest GitHub Release:
 
-​```python ref=src/auth.py#AuthService.login
-def login(self, user, password): ...
-​```
+```sh
+curl -fsSL https://raw.githubusercontent.com/akshay5995/driftless/main/install.sh | sh
 ```
 
-Plain Markdown links work too. Link refs are resolved relative to the doc, so they stay clickable on GitHub and in editors:
+Install a specific version or directory:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/akshay5995/driftless/main/install.sh \
+  | DRIFTLESS_VERSION=v0.1.0 DRIFTLESS_INSTALL_DIR=/usr/local/bin sh
+```
+
+The installer downloads the matching release archive for your OS and CPU, verifies it with `SHA256SUMS`, and installs `driftless`.
+
+Manual install:
+
+```sh
+# Download the archive for your platform from GitHub Releases, then:
+tar -xzf driftless-0.1.0-x86_64-unknown-linux-gnu.tar.gz
+install -m 755 driftless-0.1.0-x86_64-unknown-linux-gnu/driftless ~/.local/bin/driftless
+driftless --version
+```
+
+## Add refs
+
+Inline refs:
+
+```markdown
+Login is handled by `src/auth.py#AuthService.login`.
+```
+
+Markdown links stay clickable in editors and on GitHub:
 
 ```markdown
 See [login](../src/auth.py#AuthService.login).
 ```
 
-Languages: Go, Java, Kotlin, Python, Ruby, Rust, TS/TSX/JS. Symbols resolved via tree-sitter (dotted paths: `Class.method`, Go `Receiver.Method`, `mod.fn`, rust `impl` types included).
+Fenced code refs work when the prose is attached to a snippet:
+
+````markdown
+```python ref=src/auth.py#AuthService.login
+def login(self, user, password): ...
+```
+````
+
+Supported source files: Go, Java, Kotlin, Python, Ruby, Rust, TypeScript, TSX, JavaScript, and JSX.
 
 ## Local loop
 
 ```sh
-cargo install driftless --locked
-driftless --version
-driftless init --prompt
 driftless init
+driftless update
 driftless check
 driftless check --json
 driftless coverage --include src/
 driftless coverage --include src/ --json
 ```
 
-Give `driftless init --prompt` to an agent when you want it to set up a project. The same setup path is configurable: use `driftless init --prompt --ci gitlab` for a GitLab-ready prompt, `driftless init --ci gitlab` to write `.gitlab-ci.yml`, or `driftless init --ci none` when CI is managed elsewhere. By default, `driftless init` writes an `AGENTS.md` guide and GitHub Actions workflow; `driftless init --print --ci <github|gitlab|none>` prints copyable snippets instead of writing files.
+`driftless init` prints a setup prompt for an agent. It does not write CI or project files.
 
-When docs have been reviewed, update the lockfile:
+Run `driftless update` only after the docs have been reviewed. It writes `.driftless.lock` when every ref resolves. Later, `driftless check` fails if a referenced symbol changes, disappears, or is not yet locked.
+
+`driftless coverage --include src/` inverts the check: it reports public symbols under `src/` that are not covered by docs. Constructors, private names, crate-visible Rust items, and non-exported symbols are ignored.
+
+## Output examples
+
+`driftless init` prints a prompt and does not write files:
+
+```text
+Set up Driftless in this repository.
+
+Goal: keep Markdown docs linked to source symbols so documentation drift is caught while code is being written.
+
+Steps:
+1. Inspect this repository's docs and source layout.
+2. Add Markdown refs to important docs using inline refs like `src/lib.rs#symbol`, links like `[symbol](src/lib.rs#symbol)`, or fenced-code info strings like `rust ref=src/lib.rs#symbol`.
+3. Run `driftless update` after the docs have been reviewed.
+...
+```
+
+First lock after adding refs:
+
+```text
+locked   README.md:42 src/lib.rs#login
+wrote /path/to/project/.driftless.lock
+```
+
+Clean check:
+
+```text
+driftless: ok
+```
+
+Signature drift:
+
+```text
+error    README.md:42 src/lib.rs#login signature changed (40d3a77b2e5d5eb7:9de37b2f0b2cbb6f -> 2a5f1a4c3bb0a212:9de37b2f0b2cbb6f); update docs, then `driftless update`
+driftless: 1 error(s)
+```
+
+JSON output for an agent:
+
+```json
+[
+  {
+    "schema_version": 1,
+    "status": "body_drift",
+    "severity": "error",
+    "blocks_exit": true,
+    "ref": "src/lib.rs#login",
+    "source_file": "src/lib.rs",
+    "symbol": "login",
+    "expected_hash": "40d3a77b2e5d5eb7:9de37b2f0b2cbb6f",
+    "actual_hash": "40d3a77b2e5d5eb7:2711c50286f30f24",
+    "doc": {
+      "file": "README.md",
+      "line": 42,
+      "heading": "Authentication",
+      "section": "## Authentication\n\nLogin is handled by `src/lib.rs#login`."
+    },
+    "symbol_source": "pub fn login(user: &str) -> bool {\n    user == \"root\"\n}\n"
+  }
+]
+```
+
+With `--warn-body --json`, body-only drift records keep the same shape but use `"severity": "warning"` and `"blocks_exit": false`.
+
+Missing coverage:
+
+```text
+undocumented fn        src/lib.rs#logout
+driftless: 1 undocumented public symbol(s)
+```
+
+Coverage JSON:
+
+```json
+[
+  {
+    "schema_version": 1,
+    "status": "undocumented",
+    "severity": "error",
+    "blocks_exit": true,
+    "kind": "fn",
+    "source_file": "src/lib.rs",
+    "symbol": "logout",
+    "ref": "src/lib.rs#logout"
+  }
+]
+```
+
+## Agent repair
+
+Use JSON output for automated repair loops:
 
 ```sh
-driftless update
+driftless check --json
 ```
 
-`update` writes `.driftless.lock` only when every ref resolves. When code changes later, `check` fails until the docs are reviewed and the lockfile is refreshed.
-
-Other useful commands:
-
-```sh
-driftless check --warn-body  # body-only drift = warning; signature drift still fails
-driftless lsp                # LSP over stdio
-```
-
-Signature and body are hashed separately. Coverage counts a symbol documented if it or an ancestor is referenced; constructors, private names (`_name`), Rust crate-visible items (`pub(crate)`), and non-exported symbols are exempt.
-
-## Dogfooding this repo
-
-This repo uses Driftless against its own docs and tests:
-
-- `docs/architecture.md` links to the core implementation.
-- `src/init.rs#run_init` is the project setup path for new users and agents.
-- `src/init.rs#print_prompt` is the copyable prompt path for agent-led setup.
-- `tests/common/language.rs#assert_language_roundtrip_refs` proves refs, lockfile updates, checks, and coverage agree end to end.
-- `tests/languages.rs#typescript_exported_class_and_function_refs_roundtrip` and neighboring tests cover the supported language matrix.
-
-Before handing off changes here, run:
-
-```sh
-cargo fmt --all -- --check
-cargo clippy --all-targets -- -D warnings
-cargo test --all-targets
-cargo build --release
-./target/release/driftless check
-./target/release/driftless check --json
-./target/release/driftless coverage --include src/
-```
-
-The benchmark suite in `benches/cli.rs#bench_cli` uses the real release binary:
-
-| Benchmark | What it protects |
-| --- | --- |
-| `check_200_refs` | Basic locked-ref check path on one documented Rust source file. |
-| `check_json_200_refs` | Agent JSON output overhead when refs are valid. |
-| `coverage_200_public_symbols` | Public-symbol inventory and docs coverage on a dense Rust file. |
-| `check_mixed_120_refs_80_files` | Multi-language, multi-file source parsing across Rust and Go refs. |
-| `check_cached_source_1000_refs` | Per-run source parse cache when many docs point at one file. |
-| `check_json_80_body_drifts` | Agent JSON output when many refs need repair context. |
-| `coverage_mixed_120_public_symbols` | Coverage over mixed Rust and Go public APIs. |
-
-Run full measurements with `cargo bench --bench cli`; use `cargo bench --bench cli -- --test` for a quick smoke check.
-
-## CI Backstop
-
-```yaml
-- run: driftless check
-```
-
-This repo also includes `.github/workflows/ci.yml` with format, clippy, tests, release build, `driftless check`, and `driftless coverage` checks.
-
-## Release Binaries
-
-Push a version tag to publish binaries:
-
-```sh
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-`.github/workflows/release.yml` builds release archives for Linux x64/arm64, macOS Intel/Apple Silicon, and Windows x64. The workflow verifies the tag matches `Cargo.toml`, checks the crates.io package, publishes archives with `SHA256SUMS`, and creates GitHub artifact attestations for release assets.
-
-Install a prebuilt Unix binary by choosing one target from `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin`, or `aarch64-apple-darwin`:
-
-```sh
-version=0.1.0
-target=aarch64-apple-darwin
-repo=akshay5995/driftless
-base="https://github.com/${repo}/releases/download/v${version}"
-
-curl -fsSLO "${base}/driftless-${version}-${target}.tar.gz"
-curl -fsSLO "${base}/SHA256SUMS"
-shasum -a 256 -c SHA256SUMS --ignore-missing
-gh attestation verify "driftless-${version}-${target}.tar.gz" --repo "${repo}"
-tar -xzf "driftless-${version}-${target}.tar.gz"
-install -m 0755 "driftless-${version}-${target}/driftless" /usr/local/bin/driftless
-driftless --version
-```
-
-For Windows, download `driftless-0.1.0-x86_64-pc-windows-msvc.zip`, verify it against `SHA256SUMS`, then add the extracted `driftless.exe` to `PATH`.
+Each check record includes `schema_version`, `status`, `severity`, `blocks_exit`, `ref`, `source_file`, `symbol`, hash fields when relevant, the enclosing Markdown `doc` section, and current `symbol_source`. The deterministic core is `src/check.rs#run_check`; agent setup is intentionally just a prompt from `src/init.rs#print_prompt`.
 
 ## Editor
 
-Neovim (native LSP):
+Driftless includes an LSP server over stdio:
+
+```sh
+driftless lsp
+```
+
+Neovim example:
+
 ```lua
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "markdown",
   callback = function()
-    vim.lsp.start({ name = "driftless", cmd = { "driftless", "lsp" },
-      root_dir = vim.fs.root(0, { ".driftless.lock", ".git" }) })
+    vim.lsp.start({
+      name = "driftless",
+      cmd = { "driftless", "lsp" },
+      root_dir = vim.fs.root(0, { ".driftless.lock", ".git" }),
+    })
   end,
 })
 ```
 
-VS Code: any generic LSP client works, e.g. the "LSP Proxy"/"Generic LSP Client" extensions pointed at `driftless lsp` for `markdown`. (A dedicated small extension is the polished path.)
+The LSP uses the same checking path as the CLI. It can recheck open Markdown docs against unsaved source buffers, and capable clients get dynamic watchers for source files and `.driftless.lock`.
 
-The server dynamically registers source-file and `.driftless.lock` watchers when the client supports `workspace/didChangeWatchedFiles`. Clients without dynamic file watching still get diagnostics on Markdown edits and saves; configure them to send file-change notifications for `**/*.{go,java,js,jsx,kt,kts,py,rb,rs,ts,tsx}` and `**/.driftless.lock` if you want diagnostics to refresh immediately after source or lockfile changes.
+## More
 
-## Design
-
-- No LSP servers spawned for target languages, no SCIP index. Driftless uses tree-sitter and parses only referenced or included files.
-- Drift = sha256 of the symbol's byte range vs `.driftless.lock`. Rename/delete = resolution failure.
-- Adding a language = one crate + node naming in `def_name()`/`def_path()` plus public-symbol rules for coverage.
-- Coverage is intentionally conservative: it tracks common public classes, functions, methods, types, and modules, not a full language-server-grade symbol graph.
-
-See `docs/architecture.md` for the module map. That doc uses live `driftless` references into this codebase and is locked in `.driftless.lock`.
-
-## Agent loop (`--json`)
-
-`driftless check --json` prints a JSON array. Each record includes `schema_version: 1`, `status` (`sig_drift`|`body_drift`|`file_missing`|`symbol_missing`|`unlocked`), `severity` (`error`|`warning`), `blocks_exit`, `ref`, `source_file`, `symbol`, `expected_hash`, `actual_hash`, `doc {file, line, heading, section}` (full enclosing markdown section), and `symbol_source` (current code, null if unresolvable). `driftless check --warn-body --json` still emits `body_drift` records, but marks them as non-blocking warnings and exits 0 if no blocking records exist.
-
-`driftless coverage --json --include src/` also prints a JSON array. Each record includes `schema_version: 1`, `status: "undocumented"`, `severity: "error"`, `blocks_exit: true`, `kind`, `source_file`, `symbol`, and `ref`.
-
-Old code comes from git, not driftless: `git show $(git log -1 --format=%H -- .driftless.lock):$source_file`. Judge gets {old code, new code, doc section} -> binary still_accurate + patch. Accurate -> `driftless update`. Stale -> apply patch, review, `driftless update`.
+- `docs/architecture.md` explains the implementation.
+- `docs/development.md` explains repo checks, release flow, and dogfooding expectations.
+- `docs/benchmarking.md` explains benchmark fixtures, limits, and local baselines.
+- `CONTRIBUTING.md` is the short contributor entry point.

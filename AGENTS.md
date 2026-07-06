@@ -7,7 +7,7 @@ Driftless exists to reduce documentation drift while code is being written. Trea
 - Keep the hot path fast. Before adding parsing, filesystem walking, allocation-heavy code, or broad dependency changes, consider the cost in `driftless check`.
 - Do not add unsafe code. This crate uses `#![forbid(unsafe_code)]`; generated or dependency internals are outside this repo, but Driftless source should stay safe Rust.
 - Preserve the deterministic core: Markdown refs are extracted by `src/refs.rs#extract_refs`, resolved by `src/resolve.rs#resolve_symbol_in_tree`, hashed by `src/resolve.rs#symbol_hash`, and checked by `src/check.rs#run_check`.
-- Keep setup dead simple: `src/init.rs#print_prompt` should give agents a copyable setup prompt, and `src/init.rs#run_init` should support GitHub, GitLab, and no-CI project scaffolds.
+- Keep setup dead simple: `src/init.rs#print_prompt` should give agents a copyable setup prompt, and `src/init.rs#run_init` should not write CI or repository files.
 - Update docs and `.driftless.lock` together when changing referenced code or architecture docs. Run `./target/release/driftless update` only after the docs have been reviewed.
 - Add behavioral tests for user-visible behavior. Prefer real integration tests under `tests/` for agent/editor/CI workflows.
 - Dogfood the tool: docs should link to the implementation or tests they describe. Shared fixtures live in `tests/common/language.rs#assert_language_roundtrip_refs`, and the language matrix lives around `tests/languages.rs#typescript_exported_class_and_function_refs_roundtrip`.
@@ -25,6 +25,7 @@ cargo build --release
 ./target/release/driftless check
 ./target/release/driftless check --json
 ./target/release/driftless coverage --include src/
+./target/release/driftless coverage --include src/ --json
 ```
 
 ## Releases
@@ -45,7 +46,7 @@ cargo bench --bench cli -- --test
 
 ## Performance Notes
 
-- Benchmarks live in `benches/cli.rs#bench_cli` and measure the real `driftless` binary on a synthetic repo with many documented refs.
+- Benchmarks live in `benches/cli.rs#bench_cli` and measure the real `driftless` binary on synthetic repos with many documented refs.
 - Keep the per-run source cache in `src/check.rs#CheckContext` healthy; repeated refs to the same file should not repeatedly parse that file.
 - Prefer parsing only files that are referenced or explicitly included.
 - Avoid introducing project-wide indexes until a benchmark proves the current on-demand model is insufficient.

@@ -282,6 +282,32 @@ fn coverage_ignores_rust_crate_visible_symbols() {
 }
 
 #[test]
+fn coverage_reports_rust_public_impl_methods() {
+    let dir = tempfile::tempdir().expect("create temp repo");
+    write(
+        dir.path(),
+        "src/lib.rs",
+        r#"pub struct Account;
+
+impl Account {
+    pub fn login(&self) -> bool {
+        true
+    }
+}
+"#,
+    );
+    write(dir.path(), "README.md", "# API\n\nNo refs yet.\n");
+
+    let coverage = driftless(dir.path(), &["coverage", "--include", "src/"]);
+    assert!(!coverage.status.success());
+    assert!(
+        text(&coverage.stderr).contains("src/lib.rs#Account.login"),
+        "stderr:\n{}",
+        text(&coverage.stderr)
+    );
+}
+
+#[test]
 fn link_refs_resolve_relative_to_the_markdown_file() {
     let dir = tempfile::tempdir().expect("create temp repo");
     write(
@@ -333,106 +359,24 @@ fn root_flag_allows_running_outside_the_project_directory() {
 }
 
 #[test]
-fn init_print_outputs_agent_and_ci_scaffold_without_writing() {
+fn init_outputs_copyable_agent_setup_prompt_without_writing() {
     let dir = tempfile::tempdir().expect("create temp repo");
 
-    let output = driftless(dir.path(), &["init", "--print"]);
-    assert!(output.status.success(), "stderr:\n{}", text(&output.stderr));
-    let stdout = text(&output.stdout);
-    assert!(stdout.contains("## AGENTS.md"));
-    assert!(stdout.contains("driftless check --json"));
-    assert!(stdout.contains("## .github/workflows/driftless.yml"));
-    assert!(!dir.path().join("AGENTS.md").exists());
-    assert!(!dir.path().join(".github/workflows/driftless.yml").exists());
-}
-
-#[test]
-fn init_prompt_outputs_copyable_agent_setup_prompt_without_writing() {
-    let dir = tempfile::tempdir().expect("create temp repo");
-
-    let output = driftless(dir.path(), &["init", "--prompt"]);
+    let output = driftless(dir.path(), &["init"]);
     assert!(output.status.success(), "stderr:\n{}", text(&output.stderr));
     let stdout = text(&output.stdout);
     assert!(stdout.contains("Set up Driftless in this repository."));
-    assert!(stdout.contains("CI target: `github`"));
-    assert!(stdout.contains("driftless init --print --ci github"));
     assert!(stdout.contains("driftless check --json"));
+    assert!(text(&output.stderr).contains("no files were written"));
     assert!(!dir.path().join("AGENTS.md").exists());
-}
-
-#[test]
-fn init_prompt_respects_ci_choice() {
-    let dir = tempfile::tempdir().expect("create temp repo");
-
-    let output = driftless(dir.path(), &["init", "--prompt", "--ci", "gitlab"]);
-    assert!(output.status.success(), "stderr:\n{}", text(&output.stderr));
-    let stdout = text(&output.stdout);
-    assert!(stdout.contains("CI target: `gitlab`"));
-    assert!(stdout.contains("Use the GitLab CI scaffold."));
-    assert!(stdout.contains("driftless init --print --ci gitlab"));
-    assert!(stdout.contains("driftless init --ci gitlab"));
-}
-
-#[test]
-fn init_can_print_and_write_gitlab_ci_scaffold() {
-    let dir = tempfile::tempdir().expect("create temp repo");
-
-    let printed = driftless(dir.path(), &["init", "--print", "--ci", "gitlab"]);
-    assert!(
-        printed.status.success(),
-        "stderr:\n{}",
-        text(&printed.stderr)
-    );
-    let stdout = text(&printed.stdout);
-    assert!(stdout.contains("## .gitlab-ci.yml"));
-    assert!(stdout.contains("image: rust:latest"));
-    assert!(!stdout.contains(".github/workflows"));
-
-    let init = driftless(dir.path(), &["init", "--ci", "gitlab"]);
-    assert!(init.status.success(), "stderr:\n{}", text(&init.stderr));
-    assert!(dir.path().join("AGENTS.md").exists());
-    assert!(dir.path().join(".gitlab-ci.yml").exists());
     assert!(!dir.path().join(".github/workflows/driftless.yml").exists());
 }
 
 #[test]
-fn init_can_skip_ci_scaffold() {
+fn init_does_not_accept_ci_scaffold_flags() {
     let dir = tempfile::tempdir().expect("create temp repo");
 
-    let init = driftless(dir.path(), &["init", "--ci", "none"]);
-    assert!(init.status.success(), "stderr:\n{}", text(&init.stderr));
-    assert!(dir.path().join("AGENTS.md").exists());
-    assert!(!dir.path().join(".gitlab-ci.yml").exists());
-    assert!(!dir.path().join(".github/workflows/driftless.yml").exists());
-}
-
-#[test]
-fn init_writes_agent_guide_and_ci_without_overwriting_existing_files() {
-    let dir = tempfile::tempdir().expect("create temp repo");
-
-    let init = driftless(dir.path(), &["init"]);
-    assert!(init.status.success(), "stderr:\n{}", text(&init.stderr));
-    let agent_guide = fs::read_to_string(dir.path().join("AGENTS.md")).expect("read agent guide");
-    let workflow = fs::read_to_string(dir.path().join(".github/workflows/driftless.yml"))
-        .expect("read workflow");
-    assert!(agent_guide.contains("Driftless Agent Guide"));
-    assert!(workflow.contains("driftless coverage --include src/"));
-
-    write(dir.path(), "AGENTS.md", "custom instructions\n");
-    let second_init = driftless(dir.path(), &["init"]);
-    assert!(!second_init.status.success());
-    assert!(text(&second_init.stderr).contains("already exists"));
-    let preserved = fs::read_to_string(dir.path().join("AGENTS.md")).expect("read agent guide");
-    assert_eq!(preserved, "custom instructions\n");
-}
-
-#[test]
-fn init_force_overwrites_scaffold_files() {
-    let dir = tempfile::tempdir().expect("create temp repo");
-    write(dir.path(), "AGENTS.md", "custom instructions\n");
-
-    let init = driftless(dir.path(), &["init", "--force"]);
-    assert!(init.status.success(), "stderr:\n{}", text(&init.stderr));
-    let agent_guide = fs::read_to_string(dir.path().join("AGENTS.md")).expect("read agent guide");
-    assert!(agent_guide.contains("Driftless Agent Guide"));
+    let init = driftless(dir.path(), &["init", "--ci", "github"]);
+    assert!(!init.status.success());
+    assert!(text(&init.stderr).contains("unexpected argument"));
 }

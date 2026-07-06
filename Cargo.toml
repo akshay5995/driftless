@@ -6,7 +6,8 @@ rust-version = "1.75"
 license = "MIT"
 description = "Keep Markdown docs linked to code so drift is caught while you work."
 readme = "README.md"
-documentation = "https://docs.rs/driftless"
+homepage = "https://github.com/akshay5995/driftless"
+repository = "https://github.com/akshay5995/driftless"
 keywords = ["documentation", "markdown", "cli", "tree-sitter", "drift"]
 categories = ["command-line-utilities", "development-tools"]
 
