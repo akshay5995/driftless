@@ -2,6 +2,8 @@
 
 Benchmarks exist to protect the hot path that people and agents run during coding. They are not marketing numbers. Compare changes on the same machine, with the same target directory shape, and with the same benchmark command.
 
+The CLI benchmarks spawn a real process, so scheduler noise can dominate short cases. Treat one Criterion regression flag as a prompt to rerun that focused case, not as a conclusion. Require three focused runs with the same direction before claiming a regression or improvement.
+
 ## Command
 
 Run the full suite:
@@ -26,11 +28,9 @@ These numbers came from one local run on July 5, 2026 after a warm build. They a
 | --- | ---: | --- |
 | `check_200_refs` | 15.0 ms | Locked check of many Rust refs in one documented file. |
 | `check_json_200_refs` | 15.0 ms | JSON mode overhead when refs are valid. |
-| `coverage_200_public_symbols` | 5.5 ms | Public Rust symbol inventory and docs coverage. |
 | `check_mixed_120_refs_80_files` | 6.4 ms | Rust and Go parsing across many small files. |
 | `check_cached_source_1000_refs` | 12.9 ms | Repeated refs to one file through `src/check.rs#CheckContext`. |
 | `check_json_80_body_drifts` | 8.0 ms | JSON repair records when many refs drift. |
-| `coverage_mixed_120_public_symbols` | 6.5 ms | Mixed Rust and Go public symbol coverage. |
 
 ## Fixture Limits
 

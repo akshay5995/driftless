@@ -19,8 +19,6 @@ cargo test --all-targets
 cargo build --release
 ./target/release/driftless check
 ./target/release/driftless check --json
-./target/release/driftless coverage --include src/
-./target/release/driftless coverage --include src/ --json
 ```
 
 When release packaging changes, also run:
@@ -43,16 +41,14 @@ cargo bench --bench cli -- --test
 
 ## Release Tags
 
-Release binaries are pushed by `.github/workflows/release.yml` when a `v*` tag is pushed. The peeled tag ref, `refs/tags/v0.1.0^{}`, should resolve to the release commit.
+Release binaries are pushed by `.github/workflows/release.yml` when a `v*` tag is pushed. The peeled tag ref, `refs/tags/v0.2.0^{}`, should resolve to the release commit.
 
-To recreate `v0.1.0` from the current commit:
+To publish `v0.2.0` from the current commit:
 
 ```sh
 git status --short --branch
-git tag -d v0.1.0 || true
-git tag -a v0.1.0 -m "driftless 0.1.0" HEAD
-git push --force-with-lease origin main
-git push origin :refs/tags/v0.1.0
-git push origin refs/tags/v0.1.0
-git ls-remote origin refs/heads/main refs/tags/v0.1.0 refs/tags/v0.1.0^{}
+git tag -a v0.2.0 -m "driftless 0.2.0" HEAD
+git push origin main
+git push origin refs/tags/v0.2.0
+git ls-remote origin refs/heads/main refs/tags/v0.2.0 refs/tags/v0.2.0^{}
 ```

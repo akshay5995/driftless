@@ -166,9 +166,6 @@ fn bench_cli(c: &mut Criterion) {
     group.bench_function("check_json_200_refs", |b| {
         b.iter(|| command(&bin, repo.path(), &["check", "--json"]));
     });
-    group.bench_function("coverage_200_public_symbols", |b| {
-        b.iter(|| command(&bin, repo.path(), &["coverage", "--include", "src/"]));
-    });
     group.bench_function("check_mixed_120_refs_80_files", |b| {
         b.iter(|| command(&bin, mixed_repo.path(), &["check"]));
     });
@@ -177,9 +174,6 @@ fn bench_cli(c: &mut Criterion) {
     });
     group.bench_function("check_json_80_body_drifts", |b| {
         b.iter(|| command_with_status(&bin, drift_repo.path(), &["check", "--json"], false));
-    });
-    group.bench_function("coverage_mixed_120_public_symbols", |b| {
-        b.iter(|| command(&bin, mixed_repo.path(), &["coverage", "--include", "src/"]));
     });
 
     group.finish();

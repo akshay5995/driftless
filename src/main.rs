@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 
 mod check;
-mod coverage;
 mod init;
 mod lockfile;
 mod lsp;
@@ -21,16 +20,16 @@ pub(crate) const SOURCE_EXTENSIONS: [&str; 11] = [
 #[command(
     name = "driftless",
     version,
-    about = "Keep markdown docs linked to code so drift is caught while you work",
-    after_help = "Quick start:
-  driftless init             Print an agent setup prompt
-  driftless update           Review docs, then lock current refs
-  driftless check --json     Get machine-readable drift records
+    about = "Catch stale Markdown docs by linking them to source symbols",
+    after_help = "Agent loop:
+  driftless init                              Print the setup prompt
+  driftless check --json                      Inspect stale-doc records before editing
+  driftless update                            Refresh .driftless.lock after docs are reviewed
 
 Ref examples:
-  `src/lib.rs#login`
-  [login](src/lib.rs#login)
-  fenced code info: rust ref=src/lib.rs#login"
+  Inline code: `src/lib.rs#login`
+  Markdown link: [login](src/lib.rs#login)
+  Fenced code info: rust ref=src/lib.rs#login"
 )]
 struct Cli {
     /// Project root (defaults to cwd)
@@ -42,7 +41,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Verify all refs; non-zero exit on any error
+    /// Verify Markdown refs against .driftless.lock
     Check {
         /// Demote body-only drift to a warning (signature drift still fails)
         #[arg(long)]
@@ -51,18 +50,9 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
-    /// Fail if any public symbol lacks a doc reference
-    Coverage {
-        /// Restrict to path prefixes, e.g. --include src/
-        #[arg(long)]
-        include: Vec<String>,
-        /// Emit machine-readable JSON records
-        #[arg(long)]
-        json: bool,
-    },
-    /// Write/refresh .driftless.lock with current hashes
+    /// Refresh .driftless.lock after docs and source are reviewed
     Update,
-    /// Print a copyable agent setup prompt
+    /// Print the copyable Driftless setup prompt
     Init,
     /// Run as LSP server over stdio
     Lsp,
@@ -77,9 +67,6 @@ fn main() {
     match cli.cmd {
         Cmd::Check { warn_body, json } => {
             std::process::exit(check::run_check(&root, false, warn_body, json))
-        }
-        Cmd::Coverage { include, json } => {
-            std::process::exit(coverage::run_coverage(&root, &include, json))
         }
         Cmd::Update => std::process::exit(check::run_check(&root, true, false, false)),
         Cmd::Init => std::process::exit(init::run_init()),

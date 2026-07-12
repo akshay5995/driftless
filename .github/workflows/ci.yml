@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
+    branches:
+      - "**"
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -31,10 +34,6 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
-      - name: Forbid unsafe code
-        run: |
-          ! grep -R -n -E 'unsafe[[:space:]]*(\{|fn|impl|trait)' src tests benches
-
       - name: Test
         run: cargo test --all-targets
 
@@ -47,5 +46,5 @@ jobs:
       - name: Check documented refs
         run: ./target/release/driftless check
 
-      - name: Check public symbol coverage
-        run: ./target/release/driftless coverage --include src/
+      - name: Check documented refs JSON
+        run: ./target/release/driftless check --json

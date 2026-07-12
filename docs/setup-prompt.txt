@@ -1,0 +1,23 @@
+Set up Driftless in this repository.
+
+Driftless keeps Markdown docs tied to source symbols. It saves reviewed source hashes in `.driftless.lock` and fails later when code changes so related docs are reviewed too.
+
+Goal: keep docs and source behavior in sync without making user-facing docs worse.
+
+Steps:
+1. Inspect the source layout, public docs, and maintainer docs.
+2. Identify behavior worth locking: public APIs, commands, config keys, examples, package exports, and workflows.
+3. Add refs where they help the reader. Prefer maintainer docs for implementation contracts.
+4. Avoid noisy refs in user-facing docs unless the link naturally helps.
+5. If no maintainer doc exists, create a short one that explains source ownership.
+6. Run `driftless check --json` before updating the lock. Use each record's doc section and `symbol_source` to repair stale or misplaced prose.
+7. Run `driftless update` only after docs and source have been reviewed.
+8. Run `driftless check`.
+9. Commit `.driftless.lock` with the docs.
+
+Ref forms:
+- Inline code: `path/to/file.rs#symbol_name`
+- Markdown link: [symbol](path/to/file.rs#symbol_name)
+- Fenced code info string: use an opening fence like `rust ref=path/to/file.rs#symbol_name`
+
+Important: do not run `driftless update` merely to silence failures. Fix docs or source first, then refresh the lockfile.
