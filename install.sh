@@ -10,7 +10,7 @@ usage() {
 Install driftless from GitHub Releases.
 
 Environment:
-  DRIFTLESS_VERSION      Version tag to install, for example v0.1.0. Defaults to latest.
+  DRIFTLESS_VERSION      Version tag to install, for example v0.2.0. Defaults to latest.
   DRIFTLESS_INSTALL_DIR  Install directory. Defaults to ~/.local/bin.
   DRIFTLESS_REPO         GitHub repo. Defaults to akshay5995/driftless.
 EOF

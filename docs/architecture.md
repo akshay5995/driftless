@@ -10,9 +10,9 @@ Refs are deliberately simple. File paths must stay inside the project root, and 
 
 ## Symbol Resolution
 
-Language dispatch lives in `src/resolve.rs#language_for`. Tree-sitter parsing is isolated in `src/resolve.rs#parse_tree`, naming rules live in `src/resolve.rs#def_name`, and qualified paths such as Rust impl methods or Go receiver methods are normalized by `src/resolve.rs#def_path`.
+`src/resolve.rs` is a small facade over focused resolver modules. Language dispatch lives in `src/resolve.rs#language_for`, and tree-sitter parsing is isolated in `src/resolve.rs#parse_tree`. Naming rules live in `src/resolve/names.rs#def_name`, and qualified paths such as Rust impl methods or Go receiver methods are normalized by `src/resolve/names.rs#def_path`.
 
-`src/resolve.rs#resolve_symbol_in_tree` maps a dotted symbol path to a source byte range. `src/resolve.rs#symbol_hash` hashes signatures separately from bodies when the grammar exposes a body node, which lets `driftless check --warn-body` demote body-only churn without ignoring signature drift. `src/resolve.rs#symbol_source` returns current code for JSON agent records.
+`src/resolve.rs#resolve_symbol_in_tree` maps a dotted symbol path to a source byte range. `src/resolve/range.rs#symbol_range` builds a small semantic envelope around the matched item: parser-owned attributes, decorators, annotations, item doc comments, export or single-variable declaration wrappers, and adjacent trailing statements that explicitly attach to the symbol through `src/resolve/attachments.rs#is_attached_statement`. Attached statements include static property assignments, default exports, direct and property-style CommonJS exports, and `Object.assign`; ordinary member calls, string-literal or new-binding lookalikes, and enclosing Rust `//!` docs stay outside the symbol range. Using syntax-tree relationships keeps unrelated declarations out of the symbol hash even when they are adjacent. `src/resolve/hash.rs#symbol_hash` hashes signatures separately from bodies when the grammar exposes a body node, which lets `driftless check --warn-body` demote body-only churn without ignoring signature drift. `src/resolve/hash.rs#symbol_source` returns current code for JSON agent records.
 
 ## Check And Update
 
@@ -22,18 +22,12 @@ Language dispatch lives in `src/resolve.rs#language_for`. Tree-sitter parsing is
 
 Reviewed state is stored by `src/lockfile.rs#Lockfile`. `src/lockfile.rs#load_lock` treats a missing lockfile as empty state, but malformed lockfiles are hard errors. `src/lockfile.rs#save_lock` writes stable pretty JSON so lockfile diffs stay reviewable.
 
-## Coverage
-
-Coverage is the inverse check: source first, docs second. `src/coverage.rs#run_coverage` walks included source files, collects public symbols, and fails if neither a symbol nor one of its ancestors appears in docs. Human output stays compact, while `driftless coverage --json` emits versioned missing-symbol records for agents. That ancestor rule lets a class-level or type-level doc cover methods when the doc is intentionally about the whole API surface.
-
-The public-symbol rules are intentionally conservative. Coverage should catch obvious missing public docs without pretending to be a full language server. The regression test near `tests/cli_core.rs#coverage_reports_rust_public_impl_methods` protects Rust inherent methods because they sit behind `impl` nodes rather than standalone public items.
-
 ## Consumers
 
-The CLI command map lives in `src/main.rs`. `src/init.rs#print_prompt` is the entire project setup surface: it prints a copyable agent prompt and does not write CI or repository files. `src/init.rs#run_init` keeps that command side-effect-free.
+The CLI command map lives in `src/main.rs#Cmd`, and `src/main.rs#Cli` owns the short help path agents see first. `src/init.rs#SETUP_PROMPT` embeds the canonical setup text from [setup-prompt.txt](setup-prompt.txt); `src/init.rs#print_prompt` prints it, and `src/init.rs#run_init` keeps that command side-effect-free instead of writing CI or repository files.
 
 The editor consumer is `src/lsp.rs#run`. It publishes diagnostics over stdio, tracks open Markdown documents, and rechecks them when source buffers or `.driftless.lock` change. It dynamically registers source-file and lockfile watchers with capable clients, while open source buffers flow through `src/check.rs#CheckContext.with_source_overrides` so the editor path stays on the same deterministic core as the CLI.
 
 ## Dogfooding
 
-This repo keeps user docs and developer docs locked with Driftless. The shared language fixture `tests/common/language.rs#assert_language_roundtrip_refs` proves that refs, lockfile updates, checks, and coverage agree end to end. The supported language matrix starts around `tests/languages.rs#typescript_exported_class_and_function_refs_roundtrip`.
+This repo keeps user docs and developer docs locked with Driftless. The shared language fixture `tests/common/language.rs#assert_language_roundtrip_refs` proves that refs, lockfile updates, and checks agree end to end. The supported language matrix starts around `tests/languages.rs#typescript_exported_class_and_function_refs_roundtrip`, with resolver boundary cases covered by `tests/languages.rs#tsx_static_assignment_drift_fails_check`, `tests/languages.rs#tsx_adjacent_member_call_change_does_not_drift_symbol`, `tests/languages.rs#rust_inner_doc_change_does_not_drift_following_function`, `tests/languages.rs#javascript_direct_commonjs_export_drift_fails_check`, `tests/languages.rs#javascript_commonjs_arrow_wrapper_drift_fails_check`, `tests/languages.rs#javascript_commonjs_string_literal_does_not_attach_symbol`, `tests/languages.rs#javascript_commonjs_function_binding_does_not_attach_symbol`, and `tests/languages.rs#javascript_commonjs_parameter_binding_does_not_attach_symbol`.

@@ -22,6 +22,21 @@ fn version_flag_reports_package_version() {
 }
 
 #[test]
+fn help_surfaces_agent_friendly_loop() {
+    let output = Command::new(env!("CARGO_BIN_EXE_driftless"))
+        .arg("--help")
+        .output()
+        .expect("run driftless --help");
+
+    assert!(output.status.success(), "stderr:\n{}", text(&output.stderr));
+    let stdout = text(&output.stdout);
+    assert!(stdout.contains("Agent loop:"));
+    assert!(stdout.contains("driftless check --json"));
+    assert!(!stdout.contains("coverage"));
+    assert!(stdout.contains("Refresh .driftless.lock after docs are reviewed"));
+}
+
+#[test]
 fn update_locks_refs_and_check_passes() {
     let repo = rust_repo_with_doc();
 
@@ -173,138 +188,53 @@ fn check_fails_when_symbol_is_missing() {
 }
 
 #[test]
-fn coverage_json_reports_undocumented_public_symbols() {
+fn check_fails_when_rust_attribute_on_documented_symbol_changes() {
     let dir = tempfile::tempdir().expect("create temp repo");
     write(
         dir.path(),
-        "src/lib.rs",
-        r#"pub fn documented() {}
-
-pub fn undocumented() {}
-"#,
+        "README.md",
+        "CLI help is owned by `src/main.rs#Cli`.\n",
     );
-    write(dir.path(), "README.md", "See `src/lib.rs#documented`.\n");
-
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/", "--json"]);
-    assert!(!coverage.status.success());
-    assert_eq!(text(&coverage.stderr), "");
-
-    let records: Value = serde_json::from_slice(&coverage.stdout).expect("json records");
-    let record = records
-        .as_array()
-        .expect("json array")
-        .first()
-        .expect("record");
-    assert_eq!(record["schema_version"], 1);
-    assert_eq!(record["status"], "undocumented");
-    assert_eq!(record["severity"], "error");
-    assert_eq!(record["blocks_exit"], true);
-    assert_eq!(record["kind"], "fn");
-    assert_eq!(record["ref"], "src/lib.rs#undocumented");
-}
-
-#[test]
-fn coverage_fails_for_public_symbols_without_docs() {
-    let dir = tempfile::tempdir().expect("create temp repo");
     write(
         dir.path(),
-        "src/lib.rs",
-        r#"pub fn documented() {}
+        "src/main.rs",
+        r#"#[derive(ClapParser)]
+#[command(
+    about = "old help",
+    after_help = "Agent loop:
+  driftless init
 
-pub fn undocumented() {}
+Ref examples:
+  `src/lib.rs#login`"
+)]
+struct Cli {
+    cmd: Cmd,
+}
 "#,
     );
-    write(dir.path(), "README.md", "See `src/lib.rs#documented`.\n");
+    assert!(driftless(dir.path(), &["update"]).status.success());
 
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/"]);
-    assert!(!coverage.status.success());
-    assert!(text(&coverage.stderr).contains("src/lib.rs#undocumented"));
-}
-
-#[test]
-fn coverage_accepts_documented_public_symbols() {
-    let dir = tempfile::tempdir().expect("create temp repo");
     write(
         dir.path(),
-        "src/lib.rs",
-        r#"pub fn documented() {}
-"#,
-    );
-    write(dir.path(), "README.md", "See `src/lib.rs#documented`.\n");
+        "src/main.rs",
+        r#"#[derive(ClapParser)]
+#[command(
+    about = "old help",
+    after_help = "Agent loop:
+  driftless init
 
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/"]);
-    assert!(
-        coverage.status.success(),
-        "stderr:\n{}",
-        text(&coverage.stderr)
-    );
-    assert_eq!(text(&coverage.stdout), "driftless: coverage ok\n");
-}
-
-#[test]
-fn coverage_json_reports_empty_array_when_all_symbols_are_documented() {
-    let dir = tempfile::tempdir().expect("create temp repo");
-    write(
-        dir.path(),
-        "src/lib.rs",
-        r#"pub fn documented() {}
-"#,
-    );
-    write(dir.path(), "README.md", "See `src/lib.rs#documented`.\n");
-
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/", "--json"]);
-    assert!(
-        coverage.status.success(),
-        "stderr:\n{}",
-        text(&coverage.stderr)
-    );
-    assert_eq!(text(&coverage.stderr), "");
-    assert_eq!(text(&coverage.stdout), "[]\n");
-}
-
-#[test]
-fn coverage_ignores_rust_crate_visible_symbols() {
-    let dir = tempfile::tempdir().expect("create temp repo");
-    write(
-        dir.path(),
-        "src/lib.rs",
-        r#"pub(crate) fn internal_helper() {}
-"#,
-    );
-    write(dir.path(), "README.md", "# API\n\nNo public symbols.\n");
-
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/"]);
-    assert!(
-        coverage.status.success(),
-        "stderr:\n{}",
-        text(&coverage.stderr)
-    );
-}
-
-#[test]
-fn coverage_reports_rust_public_impl_methods() {
-    let dir = tempfile::tempdir().expect("create temp repo");
-    write(
-        dir.path(),
-        "src/lib.rs",
-        r#"pub struct Account;
-
-impl Account {
-    pub fn login(&self) -> bool {
-        true
-    }
+Ref examples:
+  `src/lib.rs#logout`"
+)]
+struct Cli {
+    cmd: Cmd,
 }
 "#,
     );
-    write(dir.path(), "README.md", "# API\n\nNo refs yet.\n");
 
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/"]);
-    assert!(!coverage.status.success());
-    assert!(
-        text(&coverage.stderr).contains("src/lib.rs#Account.login"),
-        "stderr:\n{}",
-        text(&coverage.stderr)
-    );
+    let check = driftless(dir.path(), &["check"]);
+    assert!(!check.status.success());
+    assert!(text(&check.stderr).contains("src/main.rs#Cli"));
 }
 
 #[test]
@@ -366,7 +296,11 @@ fn init_outputs_copyable_agent_setup_prompt_without_writing() {
     assert!(output.status.success(), "stderr:\n{}", text(&output.stderr));
     let stdout = text(&output.stdout);
     assert!(stdout.contains("Set up Driftless in this repository."));
+    assert!(stdout.contains("Goal: keep docs and source behavior in sync"));
+    assert!(stdout.contains("public APIs, commands, config keys"));
     assert!(stdout.contains("driftless check --json"));
+    assert!(!stdout.contains("coverage"));
+    assert!(stdout.contains("do not run `driftless update` merely to silence failures"));
     assert!(text(&output.stderr).contains("no files were written"));
     assert!(!dir.path().join("AGENTS.md").exists());
     assert!(!dir.path().join(".github/workflows/driftless.yml").exists());

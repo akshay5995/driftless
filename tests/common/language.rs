@@ -19,13 +19,6 @@ pub fn assert_language_roundtrip(path: &str, source: &str, reference: &str) {
 
     let check = driftless(dir.path(), &["check"]);
     assert!(check.status.success(), "stderr:\n{}", text(&check.stderr));
-
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/"]);
-    assert!(
-        coverage.status.success(),
-        "stderr:\n{}",
-        text(&coverage.stderr)
-    );
 }
 
 pub fn assert_language_roundtrip_refs(path: &str, source: &str, references: &[&str]) {
@@ -55,25 +48,49 @@ pub fn assert_language_roundtrip_refs(path: &str, source: &str, references: &[&s
 
     let check = driftless(dir.path(), &["check"]);
     assert!(check.status.success(), "stderr:\n{}", text(&check.stderr));
+}
 
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/"]);
+pub fn assert_metadata_drift_is_reported(path: &str, before: &str, after: &str, reference: &str) {
+    assert_symbol_drift_is_reported(path, before, after, reference);
+}
+
+pub fn assert_symbol_drift_is_reported(path: &str, before: &str, after: &str, reference: &str) {
+    let dir = tempfile::tempdir().expect("create temp repo");
+    write(dir.path(), path, before);
+    write(
+        dir.path(),
+        "README.md",
+        &format!("# API\n\nBehavior is owned by `{reference}`.\n"),
+    );
+
+    let update = driftless(dir.path(), &["update"]);
+    assert!(update.status.success(), "stderr:\n{}", text(&update.stderr));
+
+    write(dir.path(), path, after);
+
+    let check = driftless(dir.path(), &["check"]);
+    assert!(!check.status.success());
     assert!(
-        coverage.status.success(),
+        text(&check.stderr).contains(reference),
         "stderr:\n{}",
-        text(&coverage.stderr)
+        text(&check.stderr)
     );
 }
 
-pub fn assert_missing_doc_is_reported(path: &str, source: &str, expected: &str) {
+pub fn assert_unrelated_change_is_ignored(path: &str, before: &str, after: &str, reference: &str) {
     let dir = tempfile::tempdir().expect("create temp repo");
-    write(dir.path(), path, source);
-    write(dir.path(), "README.md", "# API\n\nNo symbol refs yet.\n");
-
-    let coverage = driftless(dir.path(), &["coverage", "--include", "src/"]);
-    assert!(!coverage.status.success());
-    assert!(
-        text(&coverage.stderr).contains(expected),
-        "stderr:\n{}",
-        text(&coverage.stderr)
+    write(dir.path(), path, before);
+    write(
+        dir.path(),
+        "README.md",
+        &format!("# API\n\nBehavior is owned by `{reference}`.\n"),
     );
+
+    let update = driftless(dir.path(), &["update"]);
+    assert!(update.status.success(), "stderr:\n{}", text(&update.stderr));
+
+    write(dir.path(), path, after);
+
+    let check = driftless(dir.path(), &["check"]);
+    assert!(check.status.success(), "stderr:\n{}", text(&check.stderr));
 }
