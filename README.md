@@ -103,9 +103,10 @@ driftless lsp
 
 The editor path uses the same checker as the CLI and can report diagnostics while source buffers are still unsaved.
 
-## More
+## Documentation
 
-- [docs/architecture.md](docs/architecture.md) maps the implementation.
-- [docs/development.md](docs/development.md) covers checks, release flow, and dogfooding.
-- [docs/benchmarking.md](docs/benchmarking.md) explains benchmark fixtures and limits.
-- [CONTRIBUTING.md](CONTRIBUTING.md) is the contributor entry point.
+- [Agent setup prompt](docs/setup-prompt.txt) — copyable instructions for adding Driftless to a repository.
+- [Architecture](docs/architecture.md) — how Markdown refs are extracted, resolved, hashed, and checked.
+- [Development](docs/development.md) — local verification, dogfooding, and the release process.
+- [Benchmarking](docs/benchmarking.md) — performance scenarios, baselines, and measurement guidance.
+- [Contributing](CONTRIBUTING.md) — how to propose and validate changes.
