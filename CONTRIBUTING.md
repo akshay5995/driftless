@@ -41,14 +41,14 @@ cargo bench --bench cli -- --test
 
 ## Release Tags
 
-Release binaries are pushed by `.github/workflows/release.yml` when a `v*` tag is pushed. The peeled tag ref, `refs/tags/v0.2.0^{}`, should resolve to the release commit.
+Release binaries are pushed by `.github/workflows/release.yml` when a `v*` tag is pushed. The peeled tag ref, `refs/tags/v0.2.1^{}`, should resolve to the release commit.
 
-To publish `v0.2.0` from the current commit:
+To publish `v0.2.1` from the current commit:
 
 ```sh
 git status --short --branch
-git tag -a v0.2.0 -m "driftless 0.2.0" HEAD
+git tag -a v0.2.1 -m "driftless 0.2.1" HEAD
 git push origin main
-git push origin refs/tags/v0.2.0
-git ls-remote origin refs/heads/main refs/tags/v0.2.0 refs/tags/v0.2.0^{}
+git push origin refs/tags/v0.2.1
+git ls-remote origin refs/heads/main refs/tags/v0.2.1 refs/tags/v0.2.1^{}
 ```

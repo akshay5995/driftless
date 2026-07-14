@@ -5,15 +5,18 @@ Driftless keeps Markdown docs tied to source symbols. It saves reviewed source h
 Goal: keep docs and source behavior in sync without making user-facing docs worse.
 
 Steps:
-1. Inspect the source layout, public docs, and maintainer docs.
-2. Identify behavior worth locking: public APIs, commands, config keys, examples, package exports, and workflows.
-3. Add refs where they help the reader. Prefer maintainer docs for implementation contracts.
-4. Avoid noisy refs in user-facing docs unless the link naturally helps.
-5. If no maintainer doc exists, create a short one that explains source ownership.
-6. Run `driftless check --json` before updating the lock. Use each record's doc section and `symbol_source` to repair stale or misplaced prose.
-7. Run `driftless update` only after docs and source have been reviewed.
-8. Run `driftless check`.
-9. Commit `.driftless.lock` with the docs.
+1. Check whether `driftless` is installed. If it is missing, install the latest GitHub Release:
+   `curl -fsSL https://raw.githubusercontent.com/akshay5995/driftless/main/install.sh | sh`
+   Then run `export PATH="$HOME/.local/bin:$PATH"` for the current shell and verify the installation with `driftless --version`.
+2. Inspect the source layout, public docs, and maintainer docs.
+3. Identify behavior worth locking: public APIs, commands, config keys, examples, package exports, and workflows.
+4. Add refs where they help the reader. Prefer maintainer docs for implementation contracts.
+5. Avoid noisy refs in user-facing docs unless the link naturally helps.
+6. If no maintainer doc exists, create a short one that explains source ownership.
+7. Run `driftless check --json` before updating the lock. Use each record's doc section and `symbol_source` to repair stale or misplaced prose.
+8. Run `driftless update` only after docs and source have been reviewed.
+9. Run `driftless check`.
+10. Commit `.driftless.lock` with the docs.
 
 Ref forms:
 - Inline code: `path/to/file.rs#symbol_name`

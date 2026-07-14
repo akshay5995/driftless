@@ -25,6 +25,7 @@ driftless init
 ```
 
 You can also point an agent at [docs/setup-prompt.txt](docs/setup-prompt.txt).
+The prompt checks whether Driftless is installed, installs the latest GitHub Release when needed, and verifies the CLI before configuring the repository.
 
 After adding useful refs and reviewing the docs:
 
@@ -105,7 +106,7 @@ The editor path uses the same checker as the CLI and can report diagnostics whil
 
 ## Documentation
 
-- [Agent setup prompt](docs/setup-prompt.txt) — copyable instructions for adding Driftless to a repository.
+- [Agent setup prompt](docs/setup-prompt.txt) — self-contained instructions that install Driftless when needed and add it to a repository.
 - [Architecture](docs/architecture.md) — how Markdown refs are extracted, resolved, hashed, and checked.
 - [Development](docs/development.md) — local verification, dogfooding, and the release process.
 - [Benchmarking](docs/benchmarking.md) — performance scenarios, baselines, and measurement guidance.

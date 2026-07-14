@@ -298,6 +298,8 @@ fn init_outputs_copyable_agent_setup_prompt_without_writing() {
     assert!(stdout.contains("Set up Driftless in this repository."));
     assert!(stdout.contains("Goal: keep docs and source behavior in sync"));
     assert!(stdout.contains("public APIs, commands, config keys"));
+    assert!(stdout.contains("install.sh | sh"));
+    assert!(stdout.contains("driftless --version"));
     assert!(stdout.contains("driftless check --json"));
     assert!(!stdout.contains("coverage"));
     assert!(stdout.contains("do not run `driftless update` merely to silence failures"));

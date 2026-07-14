@@ -22,6 +22,8 @@ mod tests {
         let prompt = SETUP_PROMPT;
         assert!(prompt.contains("public APIs, commands, config keys"));
         assert!(prompt.contains("Prefer maintainer docs"));
+        assert!(prompt.contains("install.sh | sh"));
+        assert!(prompt.contains("driftless --version"));
         assert!(prompt.contains("driftless check --json"));
         assert!(prompt.contains("driftless update"));
         assert!(!prompt.contains("GitHub Actions scaffold"));
