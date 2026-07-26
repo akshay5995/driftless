@@ -273,6 +273,47 @@ fn file_missing_is_reported_for_locked_refs() {
 }
 
 #[test]
+fn same_symbol_documented_in_two_files_tracks_each_doc_independently() {
+    let dir = tempfile::tempdir().expect("create temp repo");
+    write(
+        dir.path(),
+        "src/lib.rs",
+        r#"pub fn login(user: &str) -> bool {
+    user == "admin"
+}
+"#,
+    );
+    write(dir.path(), "README.md", "Login: `src/lib.rs#login`.\n");
+    write(dir.path(), "GUIDE.md", "Login flow: `src/lib.rs#login`.\n");
+    assert!(driftless(dir.path(), &["update"]).status.success());
+
+    write(
+        dir.path(),
+        "src/lib.rs",
+        r#"pub fn login(user: &str) -> bool {
+    user == "root"
+}
+"#,
+    );
+
+    // Reviewer only reviews README and scopes the relock to it.
+    let update = driftless(dir.path(), &["update", "README.md"]);
+    assert!(update.status.success(), "stderr:\n{}", text(&update.stderr));
+
+    let check = driftless(dir.path(), &["check"]);
+    assert!(!check.status.success());
+    let stderr = text(&check.stderr);
+    assert!(
+        stderr.contains("GUIDE.md"),
+        "GUIDE.md's own reference should still be flagged:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("README.md"),
+        "README.md was scoped into the update and should be clean:\n{stderr}"
+    );
+}
+
+#[test]
 fn root_flag_allows_running_outside_the_project_directory() {
     let repo = rust_repo_with_doc();
 

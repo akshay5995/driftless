@@ -33,6 +33,8 @@ When docs describe implementation behavior, link the docs to real source refs an
 
 Do not run `driftless update` just to silence failures. Review the prose first, then refresh the lockfile.
 
+`driftless coverage` is a hidden, opt-in command (not part of the agent loop or `--help`) that reports the share of public symbols referenced by any doc, via `src/coverage.rs#run_coverage`. It exists for maintainers who want a periodic signal on documentation breadth; it is deliberately kept out of `driftless init` and `driftless --help` so the core agent loop stays exactly `init` / `check --json` / `update`.
+
 ## Product Boundaries
 
 [setup-prompt.txt](setup-prompt.txt) is the source printed by `src/init.rs#print_prompt`. `driftless init` should not guess the user's CI provider, overwrite repository policy, or install workflow files. `src/init.rs#run_init` should stay side-effect-free.

@@ -1,44 +1,308 @@
 {
   "refs": {
-    "benches/cli.rs#bench_cli": "3dc0e710b7d8bf24:436ed2883e871b80",
-    "benches/cli.rs#driftless_bin": "12f904c68d132476:4d2c8740d4d20798",
-    "benches/cli.rs#ensure_release_binary": "8745f68553d8ea99:d6c2a6aabf8f82bc",
-    "src/check.rs#CheckContext": "b8bb2a888f0392de:713760d85bf47244",
-    "src/check.rs#CheckContext.with_source_overrides": "cd06478aef2e63e2:5c5440f2d40be45d",
-    "src/check.rs#RefStatus": "2bb080dd3c10a8b4:f265b2cb82c6f622",
-    "src/check.rs#run_check": "ec38f39bdbd64211:42e4d7f4f7819a90",
-    "src/init.rs#SETUP_PROMPT": "1c9f8cab79f1654f",
-    "src/init.rs#print_prompt": "ce90dcf8c738ea7f:dca89fa224764f1b",
-    "src/init.rs#run_init": "ec6387b310246b86:2786b32fcbe91ba1",
-    "src/lockfile.rs#Lockfile": "179c7445115b5b92:fc5c3f93dd73e5b5",
-    "src/lockfile.rs#load_lock": "1913279201d9a201:a640082d31f897f4",
-    "src/lockfile.rs#save_lock": "e8d5937741e9d4d6:d69024ad934aa041",
-    "src/lsp.rs#run": "34f89bf60fdd5c2f:43356d877c018e15",
-    "src/main.rs#Cli": "9b89b55941eb983e:0f015a12d821173d",
-    "src/main.rs#Cmd": "98edd4f646b01dfb:82b96f0c839e75d4",
-    "src/refs.rs#MdRef": "8b4e60c36f338925:ba4687117d8c4553",
-    "src/refs.rs#extract_refs": "0b8dfe4ed986959b:0924787828d0a7dc",
-    "src/refs.rs#line_of": "206fa66dbc6ef078:877391a27c49cca5",
-    "src/refs.rs#md_files": "2f014351174e2e1b:a58a004460bb64e0",
-    "src/resolve.rs#language_for": "0623839cebc5065b:7d926c2de1070759",
-    "src/resolve.rs#parse_tree": "3099814ec1acf01c:b7a21d11f74a71e7",
-    "src/resolve.rs#resolve_symbol_in_tree": "99d6abd4c8f6ce6d:8a49bd83675aba52",
-    "src/resolve/attachments.rs#is_attached_statement": "62c38dbc107f4fa5:57d5a743ed12290a",
-    "src/resolve/hash.rs#symbol_hash": "bd3f02aed7a10a98:599d63b3cd21523d",
-    "src/resolve/hash.rs#symbol_source": "6c759b79c3496794:b9e229747e240aa6",
-    "src/resolve/names.rs#def_name": "e2f083bfb5ff4627:877b9ac9e311430d",
-    "src/resolve/names.rs#def_path": "2023d200e074d367:33ca5008b046f856",
-    "src/resolve/range.rs#symbol_range": "ed268ebcc3db30d3:69e21af95426e2ea",
-    "tests/common/language.rs#assert_language_roundtrip_refs": "4182865a73227edb:56eb7769ff18d2d4",
-    "tests/languages.rs#javascript_commonjs_arrow_wrapper_drift_fails_check": "88ab32265fa1856a:193eb1eec8b06afa",
-    "tests/languages.rs#javascript_commonjs_function_binding_does_not_attach_symbol": "77189966996e82b2:c4c76f9fb13ed6f7",
-    "tests/languages.rs#javascript_commonjs_parameter_binding_does_not_attach_symbol": "e7c118307ce0c931:1ec9b43380c6280f",
-    "tests/languages.rs#javascript_commonjs_string_literal_does_not_attach_symbol": "02521d9bd52293fe:77274f1474200cf0",
-    "tests/languages.rs#javascript_direct_commonjs_export_drift_fails_check": "5e4f8d94dfa586d2:8a2a14dc25b14cf3",
-    "tests/languages.rs#rust_inner_doc_change_does_not_drift_following_function": "6c18fa05899ec32a:65e27254f159c195",
-    "tests/languages.rs#tsx_adjacent_member_call_change_does_not_drift_symbol": "753cc1975870663c:0ab4e83375a2764e",
-    "tests/languages.rs#tsx_default_wrapper_drift_fails_check": "12d13cfa9d544d56:763008320814d8c4",
-    "tests/languages.rs#tsx_static_assignment_drift_fails_check": "8ef688acaa2d3c08:740a9140f571bec8",
-    "tests/languages.rs#typescript_exported_class_and_function_refs_roundtrip": "8fbcf4ab3719a306:1abdaf8d82a74cd7"
+    "AGENTS.md :: benches/cli.rs#bench_cli": {
+      "hash": "3ce02ac97ece5f9a:a3afd16eeeed99d3",
+      "doc_hash": "df0080ef2077c601"
+    },
+    "AGENTS.md :: src/check.rs#CheckContext": {
+      "hash": "bec22442ab17af27:7812346c48e424ed",
+      "doc_hash": "df0080ef2077c601"
+    },
+    "AGENTS.md :: src/check.rs#doc_lock_key": {
+      "hash": "6702ade92cd952ab:a39bdefa4ddcda60",
+      "doc_hash": "12d926db12301b72"
+    },
+    "AGENTS.md :: src/check.rs#run_check": {
+      "hash": "d8720b4a5935c5cd:e199bd771ddaf356",
+      "doc_hash": "12d926db12301b72"
+    },
+    "AGENTS.md :: src/init.rs#print_prompt": {
+      "hash": "d1a7c89766a917cb:66919a30a92200d7",
+      "doc_hash": "12d926db12301b72"
+    },
+    "AGENTS.md :: src/init.rs#run_init": {
+      "hash": "e33f886b9bf30ebe:48665b2afc266e3e",
+      "doc_hash": "12d926db12301b72"
+    },
+    "AGENTS.md :: src/refs.rs#extract_refs": {
+      "hash": "12ae20ec8f852feb:bf9badde0ed3eb93",
+      "doc_hash": "12d926db12301b72"
+    },
+    "AGENTS.md :: src/resolve.rs#resolve_symbol_in_tree": {
+      "hash": "33ffa7f3934d7b21:28444180cf47c9a0",
+      "doc_hash": "12d926db12301b72"
+    },
+    "AGENTS.md :: src/resolve/hash.rs#symbol_hash": {
+      "hash": "4b1770bd307ef0b1:3a7fbd72f52964e3",
+      "doc_hash": "12d926db12301b72"
+    },
+    "AGENTS.md :: tests/common/language.rs#assert_language_roundtrip_refs": {
+      "hash": "27107bbf46571e1a:65914770d453e67a",
+      "doc_hash": "12d926db12301b72"
+    },
+    "AGENTS.md :: tests/languages.rs#typescript_exported_class_and_function_refs_roundtrip": {
+      "hash": "a86c1b89e970c016:264384c737662f78",
+      "doc_hash": "12d926db12301b72"
+    },
+    "docs/architecture.md :: src/check.rs#CheckContext": {
+      "hash": "bec22442ab17af27:7812346c48e424ed",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/check.rs#CheckContext.with_source_overrides": {
+      "hash": "a68ea45bb3782a42:d40e9a09687cb88c",
+      "doc_hash": "4be5eb9a1a689fce"
+    },
+    "docs/architecture.md :: src/check.rs#RefStatus": {
+      "hash": "3ed8817e8db7ea51:6d6f489b9cd93604",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/check.rs#doc_lock_key": {
+      "hash": "6702ade92cd952ab:a39bdefa4ddcda60",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/check.rs#run_check": {
+      "hash": "d8720b4a5935c5cd:e199bd771ddaf356",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/config.rs#is_excluded": {
+      "hash": "c40c71da438ec3eb:339d992e2fc60ddd",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/config.rs#load_config": {
+      "hash": "a4897805e78ec3f6:008305354bdc5b21",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/init.rs#SETUP_PROMPT": {
+      "hash": "1c9f8cab79f1654f",
+      "doc_hash": "4be5eb9a1a689fce"
+    },
+    "docs/architecture.md :: src/init.rs#print_prompt": {
+      "hash": "d1a7c89766a917cb:66919a30a92200d7",
+      "doc_hash": "4be5eb9a1a689fce"
+    },
+    "docs/architecture.md :: src/init.rs#run_init": {
+      "hash": "e33f886b9bf30ebe:48665b2afc266e3e",
+      "doc_hash": "4be5eb9a1a689fce"
+    },
+    "docs/architecture.md :: src/lockfile.rs#LockEntry": {
+      "hash": "5fee2fe79491c1c0:c2f04576a17db3b8",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/lockfile.rs#Lockfile": {
+      "hash": "19dfe311f9d65bd3:a03e98b8452dfe4a",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/lockfile.rs#load_lock": {
+      "hash": "140199159dc6666f:d9bbe4eeb9b6b494",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/lockfile.rs#save_lock": {
+      "hash": "6ad085af203c78c7:91a7620e9a1d3bbc",
+      "doc_hash": "1da4ea7a8e6bfd65"
+    },
+    "docs/architecture.md :: src/lsp.rs#run": {
+      "hash": "3553e1ba9d5a47d7:fcc6ae925cd09134",
+      "doc_hash": "4be5eb9a1a689fce"
+    },
+    "docs/architecture.md :: src/main.rs#Cli": {
+      "hash": "e65e77ce8832331a:614a00bb41425954",
+      "doc_hash": "4be5eb9a1a689fce"
+    },
+    "docs/architecture.md :: src/main.rs#Cmd": {
+      "hash": "48eaf52c754a382e:e3947eaee542ad7c",
+      "doc_hash": "4be5eb9a1a689fce"
+    },
+    "docs/architecture.md :: src/refs.rs#MdRef": {
+      "hash": "13bbcf549226c86e:0cfc4aeae3d02c66",
+      "doc_hash": "3bb1d789fb194b13"
+    },
+    "docs/architecture.md :: src/refs.rs#extract_refs": {
+      "hash": "12ae20ec8f852feb:bf9badde0ed3eb93",
+      "doc_hash": "3bb1d789fb194b13"
+    },
+    "docs/architecture.md :: src/refs.rs#line_of": {
+      "hash": "dbddeb24c1c827ec:d7fa1bdeb46178e1",
+      "doc_hash": "3bb1d789fb194b13"
+    },
+    "docs/architecture.md :: src/refs.rs#md_files": {
+      "hash": "76deec5d1c19b8e5:099dd02299dfa182",
+      "doc_hash": "3bb1d789fb194b13"
+    },
+    "docs/architecture.md :: src/resolve.rs#language_for": {
+      "hash": "d2faf7ba0634d264:4efc0ce2f3dcd87a",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: src/resolve.rs#parse_tree": {
+      "hash": "8aa35521f4f8d642:36d7c2faa0a332ea",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: src/resolve.rs#resolve_symbol_in_tree": {
+      "hash": "33ffa7f3934d7b21:28444180cf47c9a0",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: src/resolve/attachments.rs#is_attached_statement": {
+      "hash": "7fafd22a5159308e:dc3524bd75e485c4",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: src/resolve/hash.rs#symbol_hash": {
+      "hash": "4b1770bd307ef0b1:3a7fbd72f52964e3",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: src/resolve/hash.rs#symbol_source": {
+      "hash": "90a95c6ecd694ee1:3d5edd69b072003c",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: src/resolve/names.rs#def_name": {
+      "hash": "f7671537697e96c7:d016224b89c28339",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: src/resolve/names.rs#def_path": {
+      "hash": "b8b84acc5e957f5f:9de67d86a6ae752e",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: src/resolve/range.rs#symbol_range": {
+      "hash": "676f05652e183299:0e8cfe0b1dceb429",
+      "doc_hash": "c0009315a53e6904"
+    },
+    "docs/architecture.md :: tests/common/language.rs#assert_language_roundtrip_refs": {
+      "hash": "27107bbf46571e1a:65914770d453e67a",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#javascript_commonjs_arrow_wrapper_drift_fails_check": {
+      "hash": "5332598c2ffe0256:b05daf33638aaace",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#javascript_commonjs_function_binding_does_not_attach_symbol": {
+      "hash": "76b7b8fd5ecde0a5:0177547ebdaea84b",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#javascript_commonjs_parameter_binding_does_not_attach_symbol": {
+      "hash": "2da5dc9d699581bf:b2f5001b50700e4d",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#javascript_commonjs_string_literal_does_not_attach_symbol": {
+      "hash": "cd68e35a477ad0de:9498b7c816975fb7",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#javascript_direct_commonjs_export_drift_fails_check": {
+      "hash": "2f5c723d06933dd6:a9f1cb9c646a57ba",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#rust_inner_doc_change_does_not_drift_following_function": {
+      "hash": "210a4de10ef51fc3:e2b5190cb5304ed9",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#tsx_adjacent_member_call_change_does_not_drift_symbol": {
+      "hash": "5406ba22d09a2edd:d96fdab1ddd5b68d",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#tsx_static_assignment_drift_fails_check": {
+      "hash": "21ce5727fbcd9863:bb58e2f3c86f4d13",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/architecture.md :: tests/languages.rs#typescript_exported_class_and_function_refs_roundtrip": {
+      "hash": "a86c1b89e970c016:264384c737662f78",
+      "doc_hash": "cbc69aa5e2eb04e6"
+    },
+    "docs/benchmarking.md :: benches/cli.rs#bench_cli": {
+      "hash": "3ce02ac97ece5f9a:a3afd16eeeed99d3",
+      "doc_hash": "cae5ac277895bafe"
+    },
+    "docs/benchmarking.md :: benches/cli.rs#driftless_bin": {
+      "hash": "7d358bc3566ffeb8:dff9ec3f7d90e5f1",
+      "doc_hash": "27e4e231eadd725a"
+    },
+    "docs/benchmarking.md :: benches/cli.rs#ensure_release_binary": {
+      "hash": "286634018fe244a5:9d1634b0903803ba",
+      "doc_hash": "27e4e231eadd725a"
+    },
+    "docs/benchmarking.md :: src/check.rs#CheckContext": {
+      "hash": "bec22442ab17af27:7812346c48e424ed",
+      "doc_hash": "0d298e2a3e3677ea"
+    },
+    "docs/benchmarking.md :: src/lsp.rs#run": {
+      "hash": "3553e1ba9d5a47d7:fcc6ae925cd09134",
+      "doc_hash": "cae5ac277895bafe"
+    },
+    "docs/development.md :: src/check.rs#CheckContext": {
+      "hash": "bec22442ab17af27:7812346c48e424ed",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: src/check.rs#run_check": {
+      "hash": "d8720b4a5935c5cd:e199bd771ddaf356",
+      "doc_hash": "f9c9564fce9379a2"
+    },
+    "docs/development.md :: src/coverage.rs#run_coverage": {
+      "hash": "10070a8d77d35be8:29b3c4cbb5093e0a",
+      "doc_hash": "f9c9564fce9379a2"
+    },
+    "docs/development.md :: src/init.rs#print_prompt": {
+      "hash": "d1a7c89766a917cb:66919a30a92200d7",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: src/init.rs#run_init": {
+      "hash": "e33f886b9bf30ebe:48665b2afc266e3e",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: src/lsp.rs#run": {
+      "hash": "3553e1ba9d5a47d7:fcc6ae925cd09134",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: src/refs.rs#extract_refs": {
+      "hash": "12ae20ec8f852feb:bf9badde0ed3eb93",
+      "doc_hash": "f9c9564fce9379a2"
+    },
+    "docs/development.md :: src/resolve.rs#resolve_symbol_in_tree": {
+      "hash": "33ffa7f3934d7b21:28444180cf47c9a0",
+      "doc_hash": "f9c9564fce9379a2"
+    },
+    "docs/development.md :: src/resolve/attachments.rs#is_attached_statement": {
+      "hash": "7fafd22a5159308e:dc3524bd75e485c4",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: src/resolve/hash.rs#symbol_hash": {
+      "hash": "4b1770bd307ef0b1:3a7fbd72f52964e3",
+      "doc_hash": "f9c9564fce9379a2"
+    },
+    "docs/development.md :: src/resolve/range.rs#symbol_range": {
+      "hash": "676f05652e183299:0e8cfe0b1dceb429",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#javascript_commonjs_arrow_wrapper_drift_fails_check": {
+      "hash": "5332598c2ffe0256:b05daf33638aaace",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#javascript_commonjs_function_binding_does_not_attach_symbol": {
+      "hash": "76b7b8fd5ecde0a5:0177547ebdaea84b",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#javascript_commonjs_parameter_binding_does_not_attach_symbol": {
+      "hash": "2da5dc9d699581bf:b2f5001b50700e4d",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#javascript_commonjs_string_literal_does_not_attach_symbol": {
+      "hash": "cd68e35a477ad0de:9498b7c816975fb7",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#javascript_direct_commonjs_export_drift_fails_check": {
+      "hash": "2f5c723d06933dd6:a9f1cb9c646a57ba",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#rust_inner_doc_change_does_not_drift_following_function": {
+      "hash": "210a4de10ef51fc3:e2b5190cb5304ed9",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#tsx_adjacent_member_call_change_does_not_drift_symbol": {
+      "hash": "5406ba22d09a2edd:d96fdab1ddd5b68d",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#tsx_default_wrapper_drift_fails_check": {
+      "hash": "f5410d2cd354cfe8:1f848e929bdc7da7",
+      "doc_hash": "fa18d9040384230d"
+    },
+    "docs/development.md :: tests/languages.rs#tsx_static_assignment_drift_fails_check": {
+      "hash": "21ce5727fbcd9863:bb58e2f3c86f4d13",
+      "doc_hash": "fa18d9040384230d"
+    }
   }
 }

@@ -2,7 +2,7 @@ use super::*;
 
 fn resolve_symbol(lang: tree_sitter::Language, src: &str, dotted: &str) -> Option<Resolved> {
     let tree = parse_tree(lang, src)?;
-    resolve_symbol_in_tree(&tree, src, dotted)
+    resolve_symbol_in_tree(&tree, src, dotted).ok()
 }
 
 #[test]
@@ -267,6 +267,118 @@ export function Link() {
 
     assert!(source.contains("export function Button"), "{source}");
     assert!(!source.contains("export function Link"), "{source}");
+}
+
+#[test]
+fn bare_type_name_prefers_declaration_over_its_own_impl_block() {
+    // A struct's own impl block also matches the struct's bare name (an
+    // impl_item's def_path is just the type name), but that's not a real
+    // conflict between distinct definitions the way two trait impls
+    // defining the same method name are.
+    let src = r#"
+struct CheckContext {
+    files: usize,
+}
+
+impl CheckContext {
+    fn new() -> Self {
+        CheckContext { files: 0 }
+    }
+}
+"#;
+    let resolved = resolve_symbol(tree_sitter_rust::LANGUAGE.into(), src, "CheckContext");
+
+    let source = &src[resolved.unwrap().range];
+    assert!(source.starts_with("struct CheckContext"), "{source}");
+}
+
+#[test]
+fn ambiguous_symbol_across_multiple_impls_is_reported() {
+    let src = r#"
+struct Foo;
+
+impl std::fmt::Display for Foo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "display")
+    }
+}
+
+impl std::fmt::Debug for Foo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "debug")
+    }
+}
+"#;
+    let tree = parse_tree(tree_sitter_rust::LANGUAGE.into(), src).unwrap();
+    let result = resolve_symbol_in_tree(&tree, src, "Foo.fmt");
+
+    assert!(matches!(result, Err(ResolveError::Ambiguous)));
+}
+
+#[test]
+fn comment_only_body_change_keeps_body_hash_stable() {
+    let before = r#"pub fn login(user: &str) -> bool {
+    user == "admin"
+}
+"#;
+    let after = r#"pub fn login(user: &str) -> bool {
+    // now checks against admin
+    user == "admin"
+}
+"#;
+
+    let before_res = resolve_symbol(tree_sitter_rust::LANGUAGE.into(), before, "login").unwrap();
+    let after_res = resolve_symbol(tree_sitter_rust::LANGUAGE.into(), after, "login").unwrap();
+
+    assert_eq!(
+        symbol_hash(before, &before_res),
+        symbol_hash(after, &after_res)
+    );
+}
+
+#[test]
+fn python_leading_body_comment_does_not_drift_signature_or_body() {
+    // tree-sitter-python attaches a comment that opens a function body as a
+    // sibling of the body's "block" node rather than nesting it inside, so
+    // this exercises comment stripping across the whole definition span,
+    // not just the body field.
+    let before = r#"def login(user, password):
+    return check(user, password)
+"#;
+    let after = r#"def login(user, password):
+    # verify credentials
+    return check(user, password)
+"#;
+
+    let before_res = resolve_symbol(tree_sitter_python::LANGUAGE.into(), before, "login").unwrap();
+    let after_res = resolve_symbol(tree_sitter_python::LANGUAGE.into(), after, "login").unwrap();
+
+    assert_eq!(
+        symbol_hash(before, &before_res),
+        symbol_hash(after, &after_res)
+    );
+}
+
+#[test]
+fn semantic_body_change_alongside_comment_still_drifts() {
+    let before = r#"pub fn login(user: &str) -> bool {
+    // check admin
+    user == "admin"
+}
+"#;
+    let after = r#"pub fn login(user: &str) -> bool {
+    // check root now
+    user == "root"
+}
+"#;
+
+    let before_res = resolve_symbol(tree_sitter_rust::LANGUAGE.into(), before, "login").unwrap();
+    let after_res = resolve_symbol(tree_sitter_rust::LANGUAGE.into(), after, "login").unwrap();
+
+    assert_ne!(
+        symbol_hash(before, &before_res),
+        symbol_hash(after, &after_res)
+    );
 }
 
 #[test]

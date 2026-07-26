@@ -1,6 +1,7 @@
-use crate::check::{CheckContext, RefStatus};
+use crate::check::{doc_lock_key, enclosing_section, CheckContext, RefStatus};
 use crate::lockfile::load_lock;
 use crate::refs::extract_refs;
+use crate::resolve::short_hash;
 use crate::{LOCKFILE_NAME, SOURCE_EXTENSIONS, TOOL_NAME};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -132,37 +133,53 @@ impl Backend {
             .and_then(|p| p.strip_prefix(&root).ok().map(|x| x.to_path_buf()))
             .and_then(|p| p.parent().map(|x| x.to_path_buf()))
             .unwrap_or_default();
+        let doc_rel = self.rel_file_key(&uri).unwrap_or_default();
         let mut diags = Vec::new();
         let mut context = CheckContext::with_source_overrides(self.source_overrides());
         for r in extract_refs(&text, &doc_dir) {
-            let (msg, severity) = match context.check_ref(&root, &r, Some(&lock)) {
-                RefStatus::Ok => continue,
-                RefStatus::FileMissing => (
-                    format!("{}: file not found", r.key()),
-                    DiagnosticSeverity::ERROR,
-                ),
-                RefStatus::SymbolMissing => (
-                    format!("{}: symbol not found", r.key()),
-                    DiagnosticSeverity::ERROR,
-                ),
-                RefStatus::SigDrift { .. } => (
-                    format!("{}: signature changed since docs were locked", r.key()),
-                    DiagnosticSeverity::ERROR,
-                ),
-                RefStatus::BodyDrift { .. } => (
-                    format!("{}: body changed since docs were locked", r.key()),
-                    DiagnosticSeverity::WARNING,
-                ),
-                RefStatus::Unlocked { .. } => (
-                    format!(
-                        "{}: not in {} (run `{} update`)",
-                        r.key(),
-                        LOCKFILE_NAME,
-                        TOOL_NAME
+            let (_, section) = enclosing_section(&text, r.span.start);
+            let doc_hash = short_hash(&section);
+            let lock_key = doc_lock_key(&doc_rel, &r);
+            let (msg, severity) =
+                match context.check_ref(&root, &r, &lock_key, &doc_hash, Some(&lock)) {
+                    RefStatus::Ok => continue,
+                    RefStatus::FileMissing => (
+                        format!("{}: file not found", r.key()),
+                        DiagnosticSeverity::ERROR,
                     ),
-                    DiagnosticSeverity::ERROR,
-                ),
-            };
+                    RefStatus::SymbolMissing => (
+                        format!("{}: symbol not found", r.key()),
+                        DiagnosticSeverity::ERROR,
+                    ),
+                    RefStatus::AmbiguousSymbol => (
+                        format!(
+                            "{}: symbol is ambiguous (matches multiple definitions)",
+                            r.key()
+                        ),
+                        DiagnosticSeverity::ERROR,
+                    ),
+                    RefStatus::SigDrift { .. } => (
+                        format!("{}: signature changed since docs were locked", r.key()),
+                        DiagnosticSeverity::ERROR,
+                    ),
+                    RefStatus::BodyDrift { doc_reviewed, .. } => (
+                        format!("{}: body changed since docs were locked", r.key()),
+                        if doc_reviewed {
+                            DiagnosticSeverity::HINT
+                        } else {
+                            DiagnosticSeverity::WARNING
+                        },
+                    ),
+                    RefStatus::Unlocked { .. } => (
+                        format!(
+                            "{}: not in {} (run `{} update`)",
+                            r.key(),
+                            LOCKFILE_NAME,
+                            TOOL_NAME
+                        ),
+                        DiagnosticSeverity::ERROR,
+                    ),
+                };
             diags.push(Diagnostic {
                 range: Range::new(
                     to_position(&text, r.span.start),

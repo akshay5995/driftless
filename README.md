@@ -33,6 +33,12 @@ After adding useful refs and reviewing the docs:
 driftless update
 ```
 
+Restrict the relock to specific docs when only some have been reviewed (for example in a large PR); refs in every other doc keep their prior locked state and still fail `check` if they've drifted:
+
+```sh
+driftless update README.md docs/
+```
+
 While working:
 
 ```sh
@@ -41,6 +47,13 @@ driftless check --json
 ```
 
 Run `driftless update` only after the docs and source have been reviewed. Do not use it just to silence failures.
+
+Exclude paths from scanning with a `.driftlessignore` file (one glob per line, `#` for comments):
+
+```text
+vendor/**
+docs/legacy/*.md
+```
 
 ## Add Refs
 
@@ -88,11 +101,16 @@ For agents, JSON output includes the stale doc section and current source:
   {
     "status": "body_drift",
     "ref": "src/lib.rs#login",
+    "doc_reviewed": false,
     "doc": { "file": "README.md", "line": 42 },
     "symbol_source": "pub fn login(...) { ... }"
   }
 ]
 ```
+
+`doc_reviewed` is true when the Markdown section covering the ref has already changed since it was locked; body drift in that case is a non-blocking `warning` instead of an `error`, since something has already edited that prose. Signature drift always blocks, since a public contract change deserves an explicit look regardless. The same symbol referenced from two different docs is tracked independently, so reviewing (and relocking) one doc's mention never marks another doc's mention as reviewed.
+
+A ref can also come back `ambiguous_symbol` when it names multiple distinct definitions (for example two different trait implementations of the same method) rather than one — the tool won't silently guess which one you mean.
 
 ## Editor
 
