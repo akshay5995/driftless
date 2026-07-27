@@ -1,4 +1,4 @@
-use crate::check::{doc_lock_key, enclosing_section, CheckContext, RefStatus};
+use crate::check::{doc_lock_key, section_at, split_lines, CheckContext, RefStatus};
 use crate::lockfile::load_lock;
 use crate::refs::extract_refs;
 use crate::resolve::short_hash;
@@ -134,10 +134,11 @@ impl Backend {
             .and_then(|p| p.parent().map(|x| x.to_path_buf()))
             .unwrap_or_default();
         let doc_rel = self.rel_file_key(&uri).unwrap_or_default();
+        let lines = split_lines(&text);
         let mut diags = Vec::new();
         let mut context = CheckContext::with_source_overrides(self.source_overrides());
         for r in extract_refs(&text, &doc_dir) {
-            let (_, section) = enclosing_section(&text, r.span.start);
+            let (_, section) = section_at(&lines, &text, r.span.start);
             let doc_hash = short_hash(&section);
             let lock_key = doc_lock_key(&doc_rel, &r);
             let (msg, severity) =

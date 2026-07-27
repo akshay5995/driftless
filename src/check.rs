@@ -1,6 +1,6 @@
 use crate::config::{is_excluded, load_config};
 use crate::lockfile::{load_lock, lock_path, save_lock, LockEntry, Lockfile};
-use crate::refs::{extract_refs, line_of, md_files, MdRef};
+use crate::refs::{extract_refs, line_of, md_files, path_in_scope, MdRef};
 use crate::resolve::{
     language_for, parse_tree, resolve_symbol_in_tree, short_hash, symbol_hash, symbol_source,
     ResolveError,
@@ -43,6 +43,16 @@ fn doc_reviewed_since_lock(entry: &LockEntry, current_doc_hash: &str) -> bool {
 /// different doc's mention of the same symbol as reviewed too.
 pub(crate) fn doc_lock_key(doc_rel: &str, r: &MdRef) -> String {
     format!("{doc_rel} :: {}", r.key())
+}
+
+fn relock(new_lock: &mut Lockfile, lock_key: String, hash: String, doc_hash: &str) {
+    new_lock.refs.insert(
+        lock_key,
+        LockEntry {
+            hash,
+            doc_hash: doc_hash.to_string(),
+        },
+    );
 }
 
 struct SourceFile {
@@ -193,7 +203,7 @@ pub(crate) fn run_check(
         if is_excluded(&rel, &config.exclude) {
             continue;
         }
-        if !scope.is_empty() && !scope.iter().any(|p| rel.starts_with(p.as_str())) {
+        if !path_in_scope(&rel, scope) {
             continue;
         }
         let Ok(text) = std::fs::read_to_string(&md_path) else {
@@ -207,84 +217,42 @@ pub(crate) fn run_check(
             .parent()
             .unwrap_or(Path::new(""))
             .to_path_buf();
+        let lines = split_lines(&text);
         for r in extract_refs(&text, &doc_dir) {
             let line = line_of(&text, r.span.start);
-            let (heading, section) = enclosing_section(&text, r.span.start);
+            let (heading, section) = section_at(&lines, &text, r.span.start);
             let doc_hash = short_hash(&section);
             let lock_key = doc_lock_key(&rel, &r);
             let status = context.check_ref(root, &r, &lock_key, &doc_hash, Some(&lock));
-            if json && !write_lock {
-                let record_meta = match &status {
-                    RefStatus::Ok => None,
-                    RefStatus::FileMissing => {
-                        Some(("file_missing", "error", true, None, None, None))
-                    }
-                    RefStatus::SymbolMissing => {
-                        Some(("symbol_missing", "error", true, None, None, None))
-                    }
-                    RefStatus::AmbiguousSymbol => {
-                        Some(("ambiguous_symbol", "error", true, None, None, None))
-                    }
-                    RefStatus::SigDrift {
-                        expected,
-                        actual,
-                        doc_reviewed,
-                    } => Some((
-                        "sig_drift",
-                        "error",
-                        true,
-                        Some(expected),
-                        Some(actual),
-                        Some(*doc_reviewed),
-                    )),
-                    RefStatus::BodyDrift {
-                        expected,
-                        actual,
-                        doc_reviewed,
-                    } => {
-                        let (severity, blocks_exit) = if warn_body || *doc_reviewed {
-                            ("warning", false)
-                        } else {
-                            ("error", true)
-                        };
-                        Some((
-                            "body_drift",
-                            severity,
-                            blocks_exit,
-                            Some(expected),
-                            Some(actual),
-                            Some(*doc_reviewed),
-                        ))
-                    }
-                    RefStatus::Unlocked { actual } => {
-                        Some(("unlocked", "error", true, None, Some(actual), None))
-                    }
-                };
-                if let Some((
-                    kind,
-                    severity,
-                    blocks_exit,
-                    expected_hash,
-                    actual_hash,
-                    doc_reviewed,
-                )) = record_meta
-                {
-                    records.push(serde_json::json!({
-                        "schema_version": 1,
-                        "status": kind,
-                        "severity": severity,
-                        "blocks_exit": blocks_exit,
-                        "ref": r.key(),
-                        "source_file": r.file.clone(),
-                        "symbol": r.symbol.clone(),
-                        "expected_hash": expected_hash,
-                        "actual_hash": actual_hash,
-                        "doc_reviewed": doc_reviewed,
-                        "doc": { "file": rel, "line": line, "heading": heading, "section": section },
-                        "symbol_source": context.symbol_source(root, &r),
-                    }));
+
+            // Builds and pushes the JSON agent record for a non-`Ok` status;
+            // a no-op unless `driftless check --json` is running.
+            let mut push_record = |context: &mut CheckContext,
+                                   kind: &str,
+                                   severity: &str,
+                                   blocks_exit: bool,
+                                   expected_hash: Option<&str>,
+                                   actual_hash: Option<&str>,
+                                   doc_reviewed: Option<bool>| {
+                if !json || write_lock {
+                    return;
                 }
-            }
+                records.push(serde_json::json!({
+                    "schema_version": 1,
+                    "status": kind,
+                    "severity": severity,
+                    "blocks_exit": blocks_exit,
+                    "ref": r.key(),
+                    "source_file": r.file.clone(),
+                    "symbol": r.symbol.clone(),
+                    "expected_hash": expected_hash,
+                    "actual_hash": actual_hash,
+                    "doc_reviewed": doc_reviewed,
+                    "doc": { "file": rel.clone(), "line": line, "heading": heading.clone(), "section": section.clone() },
+                    "symbol_source": context.symbol_source(root, &r),
+                }));
+            };
+
             match status {
                 RefStatus::Ok => {
                     if write_lock {
@@ -294,14 +262,17 @@ pub(crate) fn run_check(
                     }
                 }
                 RefStatus::Unlocked { actual } => {
+                    push_record(
+                        &mut context,
+                        "unlocked",
+                        "error",
+                        true,
+                        None,
+                        Some(&actual),
+                        None,
+                    );
                     if write_lock {
-                        new_lock.refs.insert(
-                            lock_key.clone(),
-                            LockEntry {
-                                hash: actual,
-                                doc_hash: doc_hash.clone(),
-                            },
-                        );
+                        relock(&mut new_lock, lock_key.clone(), actual, &doc_hash);
                         locked_count += 1;
                         println!("locked   {}:{} {}", rel, line, r.key());
                     } else {
@@ -320,14 +291,17 @@ pub(crate) fn run_check(
                     actual,
                     doc_reviewed,
                 } => {
+                    push_record(
+                        &mut context,
+                        "sig_drift",
+                        "error",
+                        true,
+                        Some(&expected),
+                        Some(&actual),
+                        Some(doc_reviewed),
+                    );
                     if write_lock {
-                        new_lock.refs.insert(
-                            lock_key.clone(),
-                            LockEntry {
-                                hash: actual,
-                                doc_hash: doc_hash.clone(),
-                            },
-                        );
+                        relock(&mut new_lock, lock_key.clone(), actual, &doc_hash);
                         relocked_count += 1;
                         if !doc_reviewed {
                             relocked_without_doc_edit += 1;
@@ -357,14 +331,22 @@ pub(crate) fn run_check(
                     actual,
                     doc_reviewed,
                 } => {
+                    let (severity, blocks_exit) = if warn_body || doc_reviewed {
+                        ("warning", false)
+                    } else {
+                        ("error", true)
+                    };
+                    push_record(
+                        &mut context,
+                        "body_drift",
+                        severity,
+                        blocks_exit,
+                        Some(&expected),
+                        Some(&actual),
+                        Some(doc_reviewed),
+                    );
                     if write_lock {
-                        new_lock.refs.insert(
-                            lock_key.clone(),
-                            LockEntry {
-                                hash: actual,
-                                doc_hash: doc_hash.clone(),
-                            },
-                        );
+                        relock(&mut new_lock, lock_key.clone(), actual, &doc_hash);
                         relocked_count += 1;
                         if !doc_reviewed {
                             relocked_without_doc_edit += 1;
@@ -395,14 +377,41 @@ pub(crate) fn run_check(
                     }
                 }
                 RefStatus::FileMissing => {
+                    push_record(
+                        &mut context,
+                        "file_missing",
+                        "error",
+                        true,
+                        None,
+                        None,
+                        None,
+                    );
                     failures += 1;
                     eprintln!("error    {}:{} {} file not found", rel, line, r.key());
                 }
                 RefStatus::SymbolMissing => {
+                    push_record(
+                        &mut context,
+                        "symbol_missing",
+                        "error",
+                        true,
+                        None,
+                        None,
+                        None,
+                    );
                     failures += 1;
                     eprintln!("error    {}:{} {} symbol not found", rel, line, r.key());
                 }
                 RefStatus::AmbiguousSymbol => {
+                    push_record(
+                        &mut context,
+                        "ambiguous_symbol",
+                        "error",
+                        true,
+                        None,
+                        None,
+                        None,
+                    );
                     failures += 1;
                     eprintln!(
                         "error    {}:{} {} symbol is ambiguous (matches multiple definitions)",
@@ -445,17 +454,28 @@ pub(crate) fn run_check(
     }
 }
 
-pub(crate) fn enclosing_section(md: &str, offset: usize) -> (Option<String>, String) {
-    let mut start = 0usize;
-    let mut heading = None;
+/// Byte offset and text of each line in a document, computed once per doc
+/// and reused for every ref in it rather than rescanning the whole document
+/// per ref.
+pub(crate) fn split_lines(md: &str) -> Vec<(usize, &str)> {
+    let mut lines = Vec::new();
     let mut pos = 0usize;
-    let mut lines: Vec<(usize, &str)> = Vec::new();
     for line in md.split_inclusive('\n') {
         lines.push((pos, line));
         pos += line.len();
     }
+    lines
+}
+
+pub(crate) fn section_at(
+    lines: &[(usize, &str)],
+    md: &str,
+    offset: usize,
+) -> (Option<String>, String) {
+    let mut start = 0usize;
+    let mut heading = None;
     let mut end = md.len();
-    for (off, line) in lines {
+    for &(off, line) in lines {
         if line.trim_start().starts_with('#') {
             if off <= offset {
                 start = off;
@@ -478,7 +498,7 @@ mod tests {
         let md = "# First\nA\n\n# Second\nB `src/lib.rs#thing`.\n\n# Third\nC\n";
         let offset = md.find("src/lib.rs#thing").unwrap();
 
-        let (heading, section) = enclosing_section(md, offset);
+        let (heading, section) = section_at(&split_lines(md), md, offset);
 
         assert_eq!(heading.as_deref(), Some("Second"));
         assert_eq!(section, "# Second\nB `src/lib.rs#thing`.");
@@ -489,7 +509,7 @@ mod tests {
         let md = "Intro `src/lib.rs#thing`.\n\n# Later\nC\n";
         let offset = md.find("src/lib.rs#thing").unwrap();
 
-        let (heading, section) = enclosing_section(md, offset);
+        let (heading, section) = section_at(&split_lines(md), md, offset);
 
         assert_eq!(heading, None);
         assert_eq!(section, "Intro `src/lib.rs#thing`.");

@@ -13,9 +13,9 @@ pub(crate) fn symbol_hash(src: &str, r: &Resolved) -> String {
             let sig = normalize_whitespace(&format!("{sig_pre}{sig_post}"));
             let body_stripped = strip_ranges(&src[b.clone()], b.start, &r.comment_ranges);
             let body_text = normalize_whitespace(&body_stripped);
-            format!("{}:{}", hash(&sig), hash(&body_text))
+            format!("{}:{}", short_hash(&sig), short_hash(&body_text))
         }
-        _ => hash(&src[r.range.clone()]),
+        _ => short_hash(&src[r.range.clone()]),
     }
 }
 
@@ -65,10 +65,6 @@ fn normalize_whitespace(s: &str) -> String {
 }
 
 pub(crate) fn short_hash(s: &str) -> String {
-    hash(s)
-}
-
-fn hash(s: &str) -> String {
     let mut h = Sha256::new();
     h.update(s.as_bytes());
     let out = h.finalize();

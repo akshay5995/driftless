@@ -109,7 +109,10 @@ pub(crate) fn extract_refs(md: &str, doc_dir: &Path) -> Vec<MdRef> {
     refs
 }
 
-pub(crate) fn md_files(root: &Path) -> Vec<PathBuf> {
+/// Walks the project tree skipping heavy generated folders (`node_modules`,
+/// `target`, dotfiles). Shared by every full-repo walk (Markdown files here,
+/// source files for `driftless coverage`) so the skip list has one home.
+pub(crate) fn walk_files(root: &Path) -> impl Iterator<Item = walkdir::DirEntry> {
     walkdir::WalkDir::new(root)
         .into_iter()
         .filter_entry(|e| {
@@ -120,6 +123,10 @@ pub(crate) fn md_files(root: &Path) -> Vec<PathBuf> {
             !(n == "node_modules" || n == "target" || n.starts_with('.'))
         })
         .filter_map(|e| e.ok())
+}
+
+pub(crate) fn md_files(root: &Path) -> Vec<PathBuf> {
+    walk_files(root)
         .filter(|e| e.path().extension().is_some_and(|x| x == "md"))
         .map(|e| e.into_path())
         .collect()
@@ -131,6 +138,13 @@ pub(crate) fn line_of(text: &str, offset: usize) -> usize {
         .filter(|&b| b == b'\n')
         .count()
         + 1
+}
+
+/// True when `rel` should be processed given an (often empty, meaning "no
+/// restriction") set of path prefixes, as used by `driftless update`'s scope
+/// argument and `driftless coverage`'s `--include`.
+pub(crate) fn path_in_scope(rel: &str, prefixes: &[String]) -> bool {
+    prefixes.is_empty() || prefixes.iter().any(|p| rel.starts_with(p.as_str()))
 }
 
 #[cfg(test)]
@@ -187,5 +201,17 @@ See [logout](../src/auth.rs#logout).
         assert_eq!(line_of(text, 0), 1);
         assert_eq!(line_of(text, text.find("second").unwrap()), 2);
         assert_eq!(line_of(text, text.len()), 3);
+    }
+
+    #[test]
+    fn path_in_scope_with_no_prefixes_matches_everything() {
+        assert!(path_in_scope("README.md", &[]));
+    }
+
+    #[test]
+    fn path_in_scope_requires_a_matching_prefix() {
+        let prefixes = vec!["docs/".to_string()];
+        assert!(path_in_scope("docs/architecture.md", &prefixes));
+        assert!(!path_in_scope("README.md", &prefixes));
     }
 }

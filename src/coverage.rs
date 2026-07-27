@@ -1,5 +1,5 @@
 use crate::config::{is_excluded, load_config};
-use crate::refs::{extract_refs, md_files};
+use crate::refs::{extract_refs, md_files, path_in_scope, walk_files};
 use crate::resolve::{def_path, language_for};
 use crate::TOOL_NAME;
 use std::path::Path;
@@ -224,25 +224,14 @@ pub(crate) fn run_coverage(root: &Path, include: &[String], min: Option<u8>, jso
     let mut total = 0usize;
     let mut missing = 0usize;
     let mut records: Vec<serde_json::Value> = Vec::new();
-    for entry in walkdir::WalkDir::new(root)
-        .into_iter()
-        .filter_entry(|e| {
-            if e.depth() == 0 {
-                return true;
-            }
-            let n = e.file_name().to_string_lossy();
-            !(n == "node_modules" || n == "target" || n.starts_with('.'))
-        })
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
-    {
+    for entry in walk_files(root).filter(|e| e.file_type().is_file()) {
         let path = entry.path();
         let rel = path
             .strip_prefix(root)
             .unwrap_or(path)
             .display()
             .to_string();
-        if !include.is_empty() && !include.iter().any(|p| rel.starts_with(p.as_str())) {
+        if !path_in_scope(&rel, include) {
             continue;
         }
         if is_excluded(&rel, &config.exclude) {

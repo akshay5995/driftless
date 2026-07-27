@@ -71,12 +71,18 @@ pub(crate) fn resolve_symbol_in_tree(
         out
     }
 
-    fn walk(
-        node: tree_sitter::Node,
+    // Candidates are kept lightweight (just the matched node and its name)
+    // during the walk; building a `Resolved` runs `symbol_range` and a full
+    // subtree comment scan, which is wasted work for candidates that turn
+    // out to be discarded below (most commonly a type's own `impl` block,
+    // which matches every bare reference to that type alongside its
+    // declaration).
+    fn walk<'tree>(
+        node: tree_sitter::Node<'tree>,
         bytes: &[u8],
         parts: &[&str],
         depth: usize,
-        matches: &mut Vec<(bool, Resolved)>,
+        matches: &mut Vec<(bool, tree_sitter::Node<'tree>, String)>,
     ) {
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
@@ -87,14 +93,8 @@ pub(crate) fn resolve_symbol_in_tree(
                 {
                     let matched_depth = depth + path.len();
                     if matched_depth == parts.len() {
-                        let symbol_name = path.last().map(String::as_str).unwrap_or(parts[depth]);
-                        let body_node = child.child_by_field_name("body");
-                        let resolved = Resolved {
-                            range: symbol_range(child, bytes, symbol_name),
-                            body: body_node.map(|b| b.byte_range()),
-                            comment_ranges: collect_comment_ranges(child),
-                        };
-                        matches.push((child.kind() == "impl_item", resolved));
+                        let symbol_name = path.last().cloned().unwrap_or(parts[depth].to_string());
+                        matches.push((child.kind() == "impl_item", child, symbol_name));
                         skip_recurse = true;
                     } else {
                         next_depth = matched_depth;
@@ -117,14 +117,21 @@ pub(crate) fn resolve_symbol_in_tree(
     // just the type name too. That's not a real ambiguity between distinct
     // definitions, so the declaration wins and impl-only matches are
     // dropped whenever a non-impl match exists.
-    let non_impl = matches.iter().filter(|(is_impl, _)| !is_impl).count();
-    if non_impl > 0 {
-        matches.retain(|(is_impl, _)| !is_impl);
+    if matches.iter().any(|(is_impl, _, _)| !is_impl) {
+        matches.retain(|(is_impl, _, _)| !is_impl);
     }
 
     match matches.len() {
         0 => Err(ResolveError::NotFound),
-        1 => Ok(matches.pop().expect("checked len == 1").1),
+        1 => {
+            let (_, node, symbol_name) = matches.pop().expect("checked len == 1");
+            let body_node = node.child_by_field_name("body");
+            Ok(Resolved {
+                range: symbol_range(node, bytes, &symbol_name),
+                body: body_node.map(|b| b.byte_range()),
+                comment_ranges: collect_comment_ranges(node),
+            })
+        }
         _ => Err(ResolveError::Ambiguous),
     }
 }
